@@ -1,4 +1,3 @@
-// src/components/HangarList.tsx
 import { Aircraft } from "../data/aircraft";
 
 interface HangarListProps {

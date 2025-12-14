@@ -1,4 +1,3 @@
-// src/utils/calculations.ts
 import { EnvelopePoint } from "../data/aircraft";
 
 export function isPointInPolygon(point: { cg: number, weight: number }, vs: EnvelopePoint[]) {

@@ -1,4 +1,3 @@
-// src/components/SettingsModal.tsx
 import { useRef } from "react";
 
 interface SettingsModalProps {

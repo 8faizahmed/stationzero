@@ -1,4 +1,3 @@
-// src/components/CalculatorView.tsx
 import StationRow from "./StationRow";
 import WBGraph from "./WBGraph";
 import { isPointInPolygon, getCGLimitsAtWeight } from "../utils/calculations";
@@ -33,7 +32,7 @@ export default function CalculatorView({
 }: CalculatorProps) {
 
   // --- CALCULATION LOGIC ---
-  const useGallons = true; // Hardcoded for simplicity in this refactor, can be state
+  const useGallons = true;
   let rampWeight = plane.emptyWeight;
   let rampMoment = plane.emptyWeight * plane.emptyArm;
   let fuelArm = 0;
@@ -102,7 +101,7 @@ export default function CalculatorView({
 
   const takeoffIssue = !isTakeoffInside ? getFailureReason(takeoffWeight, takeoffCG, takeoffLimits) : null;
   const landingIssue = !isLandingInside ? getFailureReason(landingWeight, landingCG, landingLimits) : null;
-  const isGo = isTakeoffInside && isLandingInside;
+  const isGo = isTakeoffInside && (toggles.flightPlan ? isLandingInside : true);
 
   return (
     <div className="flex flex-col gap-6">
@@ -249,7 +248,11 @@ export default function CalculatorView({
                  <div className="text-xl font-bold">{category === 'normal' ? 'Normal' : 'Utility'}</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+            
+            {/* CONDITIONAL GRID: 2 Cols if flight plan, 1 Col if just takeoff */}
+            <div className={`grid ${toggles.flightPlan ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 gap-y-6`}>
+              
+              {/* TAKEOFF (Always Visible) */}
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <div className={`w-2 h-2 rounded-full ${isTakeoffInside ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`}></div>
@@ -261,21 +264,25 @@ export default function CalculatorView({
                 </div>
                 {takeoffIssue && <div className="mt-2 text-[10px] font-bold bg-black/20 p-2 rounded text-red-200 border border-red-400/30">{takeoffIssue}</div>}
               </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-2 h-2 rounded-full ${isLandingInside ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`}></div>
-                  <span className="text-xs font-bold uppercase opacity-80">Landing</span>
+
+              {/* LANDING (Conditionally Rendered) */}
+              {toggles.flightPlan && (
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`w-2 h-2 rounded-full ${isLandingInside ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`}></div>
+                    <span className="text-xs font-bold uppercase opacity-80">Landing</span>
+                  </div>
+                  {fuel.trip > 0 ? (
+                    <>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm"><span className="opacity-70">Weight</span><span className="font-mono font-bold">{landingWeight.toFixed(0)}</span></div>
+                        <div className="flex justify-between text-sm"><span className="opacity-70">CG</span><span className="font-mono font-bold">{landingCG.toFixed(1)}"</span></div>
+                      </div>
+                      {landingIssue && <div className="mt-2 text-[10px] font-bold bg-black/20 p-2 rounded text-red-200 border border-red-400/30">{landingIssue}</div>}
+                    </>
+                  ) : <div className="text-xs opacity-50 italic mt-2">Enter flight fuel to see landing stats.</div>}
                 </div>
-                {fuel.trip > 0 ? (
-                  <>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm"><span className="opacity-70">Weight</span><span className="font-mono font-bold">{landingWeight.toFixed(0)}</span></div>
-                      <div className="flex justify-between text-sm"><span className="opacity-70">CG</span><span className="font-mono font-bold">{landingCG.toFixed(1)}"</span></div>
-                    </div>
-                    {landingIssue && <div className="mt-2 text-[10px] font-bold bg-black/20 p-2 rounded text-red-200 border border-red-400/30">{landingIssue}</div>}
-                  </>
-                ) : <div className="text-xs opacity-50 italic mt-2">Enter flight fuel to see landing stats.</div>}
-              </div>
+              )}
             </div>
           </div>
         </div>

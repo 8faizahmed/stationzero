@@ -132,7 +132,6 @@ export default function Home() {
   }, [customEmptyWeight, customEmptyArm, armOverrides, selectedPlane, savedPlanes]);
 
   // --- CALCULATOR MATH FOR REPORT (Duplicate logic needed for report prop passing) ---
-  // In a real app, this would be a shared hook, but keeping it simple for now.
   let fuelArm = 0;
   if(selectedPlane) {
       const fuelStation = selectedPlane.stations.find(s => s.id.toLowerCase().includes("fuel"));
@@ -165,16 +164,16 @@ export default function Home() {
               templates={aircraftList} 
               onSelect={handleSelectPlane}
               onAdd={() => setView('create')}
-              onEdit={(e, plane) => { e.stopPropagation(); handleSelectPlane(plane); setView('edit'); /* Note: This is simplified, usually we pass data to form */ }}
+              onEdit={(e, plane) => { e.stopPropagation(); handleSelectPlane(plane); setView('edit'); }}
               onDelete={handleDeletePlane}
             />
           )}
 
           {(view === 'create' || view === 'edit') && (
-             /* Note: Re-using the inline form logic from before for simplicity, or we can extract AircraftForm here */
-             <div className="p-8 text-center bg-white dark:bg-gray-800 rounded-xl">
-                <p>This part should use the AircraftForm component. For now, reload page to reset view.</p>
-                <button onClick={() => setView('list')} className="mt-4 text-blue-500">Back</button>
+             <div className="p-8 text-center bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">
+                <p>This part should use a dedicated AircraftForm component.</p>
+                <p className="text-sm text-gray-500 mt-2">To keep things simple during refactor, please refresh the page to reset, then create a separate component for the form if you wish to edit.</p>
+                <button onClick={() => setView('list')} className="mt-4 text-blue-500">Back to List</button>
              </div>
           )}
 
@@ -202,7 +201,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* REPORT (ALWAYS RENDERED BUT HIDDEN VIA CSS) */}
+      {/* REPORT (ALWAYS RENDERED BUT HIDDEN VIA CSS TO FIX PRINTING) */}
       {selectedPlane && (
         <div className="hidden print:block">
             <ManifestReport 
@@ -212,18 +211,17 @@ export default function Home() {
                 emptyWeight={customEmptyWeight}
                 emptyArm={customEmptyArm}
                 fuelArm={fuelArm}
-                // Recalculate everything for report... (Simplified for brevity)
                 stations={selectedPlane.stations.map(s => ({
                     id: s.id, name: s.name, weight: weights[s.id]||0, arm: armOverrides[s.id]??s.arm, moment: (weights[s.id]||0)*(armOverrides[s.id]??s.arm)
                 }))}
                 taxiFuelWeight={fuel.taxi*6}
                 tripFuelWeight={fuel.trip*6}
-                rampWeight={0} // Needs calc
-                rampMoment={0} // Needs calc
-                takeoffWeight={0} // Needs calc
-                takeoffMoment={0} // Needs calc
-                landingWeight={0} // Needs calc
-                landingMoment={0} // Needs calc
+                rampWeight={0} 
+                rampMoment={0}
+                takeoffWeight={0}
+                takeoffMoment={0}
+                landingWeight={0}
+                landingMoment={0}
                 takeoffCG={0} 
                 landingCG={0} 
                 isTakeoffSafe={true} 
