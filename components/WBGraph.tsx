@@ -19,9 +19,9 @@ interface WBGraphProps {
   takeoffCG: number;
   landingWeight?: number;
   landingCG?: number;
+  isDark: boolean; // NEW PROP
 }
 
-// Custom shapes for the dots
 const RenderTakeoffPoint = (props: any) => {
   const { cx, cy } = props;
   return (
@@ -36,7 +36,7 @@ const RenderLandingPoint = (props: any) => {
   );
 };
 
-export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWeight, landingCG }: WBGraphProps) {
+export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWeight, landingCG, isDark }: WBGraphProps) {
   const takeoffPoint = [{ cg: takeoffCG, weight: takeoffWeight }];
   const landingPoint = landingWeight ? [{ cg: landingCG, weight: landingWeight }] : [];
 
@@ -48,12 +48,17 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
   const minWeight = Math.min(...allWeights) - 200;
   const maxWeight = Math.max(...allWeights) + 200;
 
+  // Colors based on mode
+  const axisColor = isDark ? "#9ca3af" : "#4b5563"; // gray-400 vs gray-600
+  const gridColor = isDark ? "#374151" : "#e5e7eb"; // gray-700 vs gray-200
+  const envColor  = isDark ? "#60a5fa" : "#2563eb"; // blue-400 vs blue-600
+
   return (
     <div className="w-full h-full flex flex-col">
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 20, right: 20, bottom: 10, left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
             
             <XAxis 
               type="number" 
@@ -62,10 +67,11 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
               domain={[minCG, maxCG]} 
               unit=" in"
               tickCount={5}
-              // FIX: Force the ticks to display nicely (e.g. 34.4 instead of 34.401639)
-              tickFormatter={(val) => val.toFixed(1)} 
+              tickFormatter={(val) => val.toFixed(1)}
+              stroke={axisColor}
+              tick={{ fill: axisColor }}
             >
-              <Label value="Center of Gravity (inches)" offset={-10} position="insideBottom" />
+              <Label value="Center of Gravity (inches)" offset={-10} position="insideBottom" fill={axisColor} />
             </XAxis>
 
             <YAxis 
@@ -74,6 +80,8 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
               name="Weight" 
               domain={[minWeight, maxWeight]} 
               unit=" lbs"
+              stroke={axisColor}
+              tick={{ fill: axisColor }}
             />
             
             <Tooltip 
@@ -83,10 +91,10 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
                 if (active && payload && payload.length) {
                   const data = payload[0].payload;
                   return (
-                    <div className="bg-white p-2 border border-gray-200 shadow-lg rounded text-xs z-50">
-                      <p className="font-bold mb-1 text-gray-800">{payload[0].name}</p>
-                      <p className="text-gray-600">Weight: <span className="font-mono text-gray-900">{data.weight.toFixed(1)}</span> lbs</p>
-                      <p className="text-gray-600">CG: <span className="font-mono text-gray-900">{data.cg.toFixed(2)}</span> in</p>
+                    <div className={`p-2 border shadow-lg rounded text-xs z-50 ${isDark ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}>
+                      <p className={`font-bold mb-1 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{payload[0].name}</p>
+                      <p className="opacity-80">Weight: <span className="font-mono">{data.weight.toFixed(1)}</span> lbs</p>
+                      <p className="opacity-80">CG: <span className="font-mono">{data.cg.toFixed(2)}</span> in</p>
                     </div>
                   );
                 }
@@ -99,7 +107,7 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
               name="Envelope" 
               data={envelope} 
               fill="transparent" 
-              line={{ stroke: '#2563eb', strokeWidth: 2 }} 
+              line={{ stroke: envColor, strokeWidth: 2 }} 
               shape={() => <></>} 
               legendType="none"
               tooltipType="none" 
@@ -118,7 +126,7 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
               <>
                 <ReferenceLine 
                   segment={[{ x: takeoffCG, y: takeoffWeight }, { x: landingCG, y: landingWeight }]} 
-                  stroke="#9ca3af" 
+                  stroke={isDark ? "#6b7280" : "#9ca3af"} 
                   strokeDasharray="3 3" 
                 />
                 <Scatter 
@@ -135,7 +143,7 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
       </div>
       
       {/* Legend */}
-      <div className="flex justify-center gap-4 text-[10px] text-gray-500 mt-1">
+      <div className={`flex justify-center gap-4 text-[10px] mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
         <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-600 border border-white shadow-sm"></div> Takeoff</div>
         {landingWeight && <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-600 border border-white shadow-sm"></div> Landing</div>}
       </div>
