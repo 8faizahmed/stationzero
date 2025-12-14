@@ -58,7 +58,7 @@ export default function HangarList({
                 <div className="mb-4">
                   <div className="flex justify-between items-start">
                     <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">
-                      {/* FIX: Removed plane.name check here to fix build error */}
+                      {/* FIX: Strictly use plane.model. Removed any fallback to .name */}
                       {plane.model}
                     </span>
                     <div className="flex gap-1">
@@ -104,7 +104,8 @@ export default function HangarList({
                   </span>
                 </div>
                 <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-tight truncate">
-                  {template.model || template.name}
+                  {/* FIX: Strictly use template.model. Removed .name */}
+                  {template.model}
                 </h3>
               </div>
 
