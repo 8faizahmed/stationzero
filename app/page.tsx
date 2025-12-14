@@ -32,7 +32,10 @@ export default function Home() {
 
   const [weights, setWeights] = useState<Record<string, number>>({});
   const [category, setCategory] = useState<'normal' | 'utility'>('normal');
+  
+  // FIX: Default taxi fuel set to 0 as requested
   const [fuel, setFuel] = useState({ taxi: 0, trip: 0, burn: 0 });
+  
   const [toggles, setToggles] = useState({ moments: false, info: false, flightPlan: false });
   const [armOverrides, setArmOverrides] = useState<Record<string, number>>({});
   const [customStations, setCustomStations] = useState<CustomStation[]>([]);
@@ -123,7 +126,7 @@ export default function Home() {
       setArmOverrides({});
     }
     setCustomStations([]);
-    setFuel({ taxi: 1.5, trip: 0, burn: 0 });
+    setFuel({ taxi: 0, trip: 0, burn: 0 }); // FIX: Reset to 0 taxi
     setCustomEmptyWeight(plane.emptyWeight);
     setCustomEmptyArm(plane.emptyArm);
     setView('calculator');
@@ -175,7 +178,9 @@ export default function Home() {
 
   // --- CALCULATION LOGIC ---
   let results = {
-    rampWeight: 0, takeoffWeight: 0, takeoffMoment: 0, takeoffCG: 0,
+    rampWeight: 0, 
+    rampMoment: 0, // FIX: Initialize rampMoment
+    takeoffWeight: 0, takeoffMoment: 0, takeoffCG: 0,
     landingWeight: 0, landingCG: 0,
     isTakeoffSafe: true, isLandingSafe: true,
     takeoffIssue: null as string | null, landingIssue: null as string | null,
@@ -249,7 +254,9 @@ export default function Home() {
     };
 
     results = {
-      rampWeight, takeoffWeight, takeoffMoment, takeoffCG,
+      rampWeight, 
+      rampMoment, // FIX: Pass calculated moment to results
+      takeoffWeight, takeoffMoment, takeoffCG,
       landingWeight, landingCG,
       isTakeoffSafe: isTakeoffInside, isLandingSafe: isLandingInside,
       takeoffIssue: !isTakeoffInside ? getFailureReason(takeoffWeight, takeoffCG, takeoffLimits) : null,
@@ -416,7 +423,7 @@ export default function Home() {
                 taxiFuelWeight={fuel.taxi*6}
                 tripFuelWeight={fuel.trip*6}
                 rampWeight={results.rampWeight} 
-                rampMoment={0}
+                rampMoment={results.rampMoment} // FIX: Pass the calculated moment here
                 takeoffWeight={results.takeoffWeight}
                 takeoffMoment={results.takeoffMoment}
                 landingWeight={results.landingWeight}
