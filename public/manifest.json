@@ -1,6 +1,6 @@
 {
-  "name": "WB Calculator",
-  "short_name": "WB Calc",
+  "name": "StationZero W&B",
+  "short_name": "StationZero",
   "description": "Offline Weight & Balance Calculator for GA Aircraft",
   "start_url": "/",
   "display": "standalone",

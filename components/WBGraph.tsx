@@ -57,7 +57,7 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
     <div className="w-full h-full flex flex-col">
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 20, right: 20, bottom: 10, left: 10 }}>
+          <ScatterChart margin={{ top: 20, right: 20, bottom: 10, left: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
             
             <XAxis 

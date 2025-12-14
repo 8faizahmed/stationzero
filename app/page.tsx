@@ -7,9 +7,8 @@ import HangarList from "../components/HangarList";
 import SettingsModal from "../components/SettingsModal";
 import CalculatorView from "../components/CalculatorView";
 import AircraftForm from "../components/AircraftForm"; 
-import { isPointInPolygon, getCGLimitsAtWeight } from "../utils/calculations"; // Ensure this is imported
+import { isPointInPolygon, getCGLimitsAtWeight } from "../utils/calculations";
 
-// --- TYPES ---
 export interface CustomStation {
   id: string;
   name: string;
@@ -24,30 +23,26 @@ export interface SavedAircraft extends Aircraft {
 }
 
 export default function Home() {
-  // --- STATE ---
   const [view, setView] = useState<'list' | 'create' | 'edit' | 'calculator'>('list');
   const [showSettings, setShowSettings] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   
-  // Data
   const [savedPlanes, setSavedPlanes] = useState<SavedAircraft[]>([]);
   const [selectedPlane, setSelectedPlane] = useState<Aircraft | SavedAircraft | null>(null);
   const [planeToEdit, setPlaneToEdit] = useState<Aircraft | SavedAircraft | null>(null); 
 
-  // Calculator State
   const [weights, setWeights] = useState<Record<string, number>>({});
   const [category, setCategory] = useState<'normal' | 'utility'>('normal');
   const [fuel, setFuel] = useState({ taxi: 1.5, trip: 0, burn: 0 });
   const [toggles, setToggles] = useState({ moments: false, info: false, flightPlan: false });
   const [armOverrides, setArmOverrides] = useState<Record<string, number>>({});
   const [customStations, setCustomStations] = useState<CustomStation[]>([]);
-  const [useGallons, setUseGallons] = useState(true); // <--- LIFTED STATE
+  const [useGallons, setUseGallons] = useState(true);
 
-  // Config State
   const [customEmptyWeight, setCustomEmptyWeight] = useState(0);
   const [customEmptyArm, setCustomEmptyArm] = useState(0);
 
-  // --- INITIAL LOAD ---
   useEffect(() => {
     const loadedFleet = localStorage.getItem("wb_saved_fleet");
     if (loadedFleet) {
@@ -57,6 +52,10 @@ export default function Home() {
     if (savedTheme === "dark") {
       setIsDarkMode(true);
       document.documentElement.classList.add("dark");
+    }
+    const accepted = localStorage.getItem("wb_legal_accepted");
+    if (accepted === "true") {
+      setHasAcceptedTerms(true);
     }
   }, []);
 
@@ -72,7 +71,6 @@ export default function Home() {
     }
   };
 
-  // --- EXPORT / IMPORT HANDLERS ---
   const handleExportData = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedPlanes));
     const downloadAnchorNode = document.createElement('a');
@@ -86,7 +84,6 @@ export default function Home() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -107,18 +104,15 @@ export default function Home() {
     e.target.value = ""; 
   };
 
-  // --- NAVIGATION HANDLERS ---
   const handleSelectPlane = (plane: Aircraft | SavedAircraft) => {
     setSelectedPlane(plane);
     setCategory('normal');
     setWeights({});
-    
     if ('savedArmOverrides' in plane && plane.savedArmOverrides) {
       setArmOverrides(plane.savedArmOverrides);
     } else {
       setArmOverrides({});
     }
-
     setCustomStations([]);
     setFuel({ taxi: 1.5, trip: 0, burn: 0 });
     setCustomEmptyWeight(plane.emptyWeight);
@@ -129,22 +123,16 @@ export default function Home() {
   const handleSavePlane = (newPlane: SavedAircraft) => {
     let updatedFleet;
     const existingIndex = savedPlanes.findIndex(p => p.id === newPlane.id);
-    
     if (existingIndex >= 0) {
         updatedFleet = [...savedPlanes];
         updatedFleet[existingIndex] = newPlane;
     } else {
         updatedFleet = [...savedPlanes, newPlane];
     }
-    
     setSavedPlanes(updatedFleet);
     localStorage.setItem("wb_saved_fleet", JSON.stringify(updatedFleet));
-    
-    if (view === 'create') {
-        handleSelectPlane(newPlane);
-    } else {
-        setView('list');
-    }
+    if (view === 'create') handleSelectPlane(newPlane);
+    else setView('list');
     setPlaneToEdit(null);
   };
 
@@ -157,7 +145,6 @@ export default function Home() {
     }
   };
 
-  // Auto-Save Overrides
   useEffect(() => {
     if (view === 'calculator' && selectedPlane && 'isCustomPlane' in selectedPlane) {
       const updatedFleet = savedPlanes.map(p => {
@@ -177,7 +164,7 @@ export default function Home() {
     }
   }, [customEmptyWeight, customEmptyArm, armOverrides, selectedPlane, savedPlanes, view]);
 
-  // --- CORE CALCULATION LOGIC (HOISTED UP) ---
+  // --- CALCULATION LOGIC ---
   let results = {
     rampWeight: 0, takeoffWeight: 0, takeoffMoment: 0, takeoffCG: 0,
     landingWeight: 0, landingCG: 0,
@@ -264,102 +251,98 @@ export default function Home() {
     };
   }
 
-  // --- RENDER ---
   return (
-    <>
-      <main className={`min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300 print:hidden`}>
-        <div className="max-w-6xl mx-auto p-4 md:p-8">
+    <div className={`min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300`}>
+      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-8 print:hidden">
+        
+        <div className="mb-6 flex justify-between items-center">
           
-          <div className="mb-6 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-blue-900 dark:text-blue-400">W&B Calculator</h1>
-            <div className="flex items-center gap-2">
-              <button onClick={toggleDarkMode} className="p-2 text-gray-500 hover:text-yellow-500 dark:text-gray-400 dark:hover:text-yellow-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition">
-                {isDarkMode ? "🌙" : "☀️"}
+          <div className="flex-1 text-Left">
+            <h1 className="text-2xl font-bold text-blue-900 dark:text-blue-400">StationZero</h1>
+            <h3 className="text-l font-medium text-gray-400 dark:text-gray-400">Weight and Balance Calculator</h3>
+          </div>  
+          
+
+          <div className="flex items-center gap-2">
+            <button onClick={toggleDarkMode} className="p-2 text-gray-500 hover:text-yellow-500 dark:text-gray-400 dark:hover:text-yellow-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition">
+              {isDarkMode ? "🌙" : "☀️"}
+            </button>
+            {view === 'list' && (
+              <button onClick={() => setShowSettings(true)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition">
+                ⚙️
               </button>
-              {view === 'list' && (
-                <button onClick={() => setShowSettings(true)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition">
-                  ⚙️
-                </button>
-              )}
-            </div>
+            )}
           </div>
-
-          {view === 'list' && (
-            <HangarList 
-              savedPlanes={savedPlanes} 
-              templates={aircraftList} 
-              
-              // 1. Click Card Body -> Open Calculator (Quick Mode)
-              onSelect={handleSelectPlane}
-              
-              // 2. Click "+" Icon -> Open Create Form for that specific plane
-              onAddToFleet={(template) => {
-                  setPlaneToEdit(template);
-                  setView('create');
-              }}
-              
-              // 3. Click top "+ Add Aircraft" -> Defaults to first plane (C172S) and opens form
-              onAdd={() => {
-                  setPlaneToEdit(aircraftList[0]);
-                  setView('create');
-              }}
-              
-              onEdit={(e, plane) => { 
-                  e.stopPropagation(); 
-                  setPlaneToEdit(plane); 
-                  setView('edit'); 
-              }}
-              
-              onDelete={handleDeletePlane}
-            />
-          )}
-
-          {(view === 'create' || view === 'edit') && planeToEdit && (
-             <AircraftForm 
-                template={planeToEdit}
-                isEditMode={view === 'edit'}
-                onSave={handleSavePlane}
-                onCancel={() => {
-                    setView('list');
-                    setPlaneToEdit(null);
-                }}
-             />
-          )}
-
-          {view === 'calculator' && selectedPlane && (
-            <CalculatorView 
-                plane={selectedPlane}
-                weights={weights}
-                armOverrides={armOverrides}
-                customStations={customStations}
-                fuel={fuel}
-                toggles={toggles}
-                category={category}
-                isDark={isDarkMode}
-                useGallons={useGallons} // <--- PASSED PROP
-                results={results} // <--- PASSED CALCULATED RESULTS
-                
-                customEmptyWeight={customEmptyWeight}
-                customEmptyArm={customEmptyArm}
-                setCustomEmptyWeight={setCustomEmptyWeight}
-                setCustomEmptyArm={setCustomEmptyArm}
-                
-                setWeights={setWeights}
-                setArmOverrides={setArmOverrides}
-                setCategory={setCategory}
-                setFuel={setFuel}
-                setToggles={setToggles}
-                setUseGallons={setUseGallons} // <--- PASSED SETTER
-                onUpdateCustom={(id, f, v) => setCustomStations(customStations.map(s => s.id === id ? { ...s, [f]: v } : s))}
-                onDeleteCustom={(id) => setCustomStations(customStations.filter(s => s.id !== id))}
-                onAddCustom={() => setCustomStations([...customStations, { id: `c-${Date.now()}`, name: "Item", weight: 0, arm: 0 }])}
-                onBack={() => setView('list')}
-            />
-          )}
         </div>
+
+        {(view === 'list' || view === 'create' || view === 'edit') && (
+          <HangarList 
+            savedPlanes={savedPlanes} 
+            templates={aircraftList} 
+            onSelect={handleSelectPlane}
+            onAddToFleet={(template) => {
+                setPlaneToEdit(template);
+                setView('create');
+            }}
+            onAdd={() => {
+                setPlaneToEdit(aircraftList[0]);
+                setView('create');
+            }}
+            onEdit={(e, plane) => { 
+                e.stopPropagation(); 
+                setPlaneToEdit(plane); 
+                setView('edit'); 
+            }}
+            onDelete={handleDeletePlane}
+          />
+        )}
+
+        {(view === 'create' || view === 'edit') && planeToEdit && (
+           <AircraftForm 
+              template={planeToEdit}
+              isEditMode={view === 'edit'}
+              onSave={handleSavePlane}
+              onCancel={() => {
+                  setView('list');
+                  setPlaneToEdit(null);
+              }}
+           />
+        )}
+
+        {view === 'calculator' && selectedPlane && (
+          <CalculatorView 
+              plane={selectedPlane}
+              weights={weights}
+              armOverrides={armOverrides}
+              customStations={customStations}
+              fuel={fuel}
+              toggles={toggles}
+              category={category}
+              isDark={isDarkMode}
+              useGallons={useGallons}
+              results={results}
+              customEmptyWeight={customEmptyWeight}
+              customEmptyArm={customEmptyArm}
+              setCustomEmptyWeight={setCustomEmptyWeight}
+              setCustomEmptyArm={setCustomEmptyArm}
+              setWeights={setWeights}
+              setArmOverrides={setArmOverrides}
+              setCategory={setCategory}
+              setFuel={setFuel}
+              setToggles={setToggles}
+              setUseGallons={setUseGallons}
+              onUpdateCustom={(id, f, v) => setCustomStations(customStations.map(s => s.id === id ? { ...s, [f]: v } : s))}
+              onDeleteCustom={(id) => setCustomStations(customStations.filter(s => s.id !== id))}
+              onAddCustom={() => setCustomStations([...customStations, { id: `c-${Date.now()}`, name: "Item", weight: 0, arm: 0 }])}
+              onBack={() => setView('list')}
+          />
+        )}
       </main>
 
-      {/* REPORT (NOW RECEIVES CORRECT NUMBERS) */}
+      <footer className="py-8 text-center print:hidden border-t border-gray-200 dark:border-gray-800 mt-auto">
+        <a href="/legal" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">Legal Disclaimer & Terms of Use</a>
+      </footer>
+
       {selectedPlane && (
         <div className="hidden print:block">
             <ManifestReport 
@@ -369,13 +352,20 @@ export default function Home() {
                 emptyWeight={customEmptyWeight}
                 emptyArm={customEmptyArm}
                 fuelArm={results.fuelArm}
-                stations={selectedPlane.stations.map(s => ({
-                    id: s.id, name: s.name, weight: weights[s.id]||0, arm: armOverrides[s.id]??s.arm, moment: (weights[s.id]||0)*(armOverrides[s.id]??s.arm)
-                }))}
+                // --- FIXED: MERGING CUSTOM STATIONS HERE ---
+                stations={[
+                    ...selectedPlane.stations.map(s => ({
+                        id: s.id, name: s.name, weight: weights[s.id]||0, arm: armOverrides[s.id]??s.arm, moment: (weights[s.id]||0)*(armOverrides[s.id]??s.arm)
+                    })),
+                    ...customStations.map(s => ({
+                        id: s.id, name: s.name, weight: s.weight, arm: s.arm, moment: s.weight * s.arm
+                    }))
+                ]}
+                // -------------------------------------------
                 taxiFuelWeight={fuel.taxi*6}
                 tripFuelWeight={fuel.trip*6}
                 rampWeight={results.rampWeight} 
-                rampMoment={0} // We calculated total moment for graph, but report might re-calc per station. Passing rampWeight is key.
+                rampMoment={0}
                 takeoffWeight={results.takeoffWeight}
                 takeoffMoment={results.takeoffMoment}
                 landingWeight={results.landingWeight}
@@ -395,6 +385,6 @@ export default function Home() {
             onExport={handleExportData} 
         />
       )}
-    </>
+    </div>
   );
 }

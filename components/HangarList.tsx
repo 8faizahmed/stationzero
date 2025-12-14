@@ -5,13 +5,12 @@ interface HangarListProps {
   templates: Aircraft[];
   onSelect: (plane: any) => void;
   onAddToFleet: (plane: any) => void;
-  onAdd: () => void; // <--- Simple trigger now
+  onAdd: () => void; 
   onEdit: (e: React.MouseEvent, plane: any) => void;
   onDelete: (e: React.MouseEvent, id: string) => void;
 }
 
 export default function HangarList({ savedPlanes, templates, onSelect, onAddToFleet, onAdd, onEdit, onDelete }: HangarListProps) {
-  
   return (
     <div className="space-y-8">
       {/* MY HANGAR */}
@@ -19,7 +18,7 @@ export default function HangarList({ savedPlanes, templates, onSelect, onAddToFl
         <div className="flex justify-between items-end mb-4">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">My Hangar</h2>
           
-          {/* UPDATED BUTTON: Direct action, no scrolling, no icon */}
+          {/* THIS BUTTON TRIGGER */}
           <button 
             onClick={onAdd} 
             className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-blue-700 transition"
@@ -31,6 +30,7 @@ export default function HangarList({ savedPlanes, templates, onSelect, onAddToFl
         {savedPlanes.length === 0 ? (
           <div className="p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-400">
             <p className="mb-2">No aircraft in your hangar yet.</p>
+            {/* EMPTY STATE TRIGGER */}
             <button onClick={onAdd} className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800">
               Add your first plane
             </button>
@@ -53,7 +53,7 @@ export default function HangarList({ savedPlanes, templates, onSelect, onAddToFl
       </div>
 
       {/* FACTORY TEMPLATES */}
-      <div className="pt-8 border-t border-gray-200 dark:border-gray-800">
+      <div id="templates" className="pt-8 border-t border-gray-200 dark:border-gray-800">
         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">Factory Templates</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {templates.map((plane) => (
@@ -64,7 +64,7 @@ export default function HangarList({ savedPlanes, templates, onSelect, onAddToFl
               {/* ADD TO FLEET BUTTON */}
               <div 
                 onClick={(e) => { e.stopPropagation(); onAddToFleet(plane); }}
-                className="absolute top-4 right-4 bg-gray-200 dark:bg-gray-700 hover:bg-blue-600 hover:text-white text-gray-500 dark:text-gray-400 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                className="absolute top-4 right-4 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-600 hover:text-white text-blue-600 dark:text-blue-300 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
                 title="Add to My Hangar"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
