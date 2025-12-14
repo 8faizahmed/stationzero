@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { aircraftList, Aircraft, SavedAircraft } from "../data/aircraft";
 import ManifestReport from "../components/ManifestReport";
 import HangarList from "../components/HangarList";
@@ -8,6 +8,7 @@ import SettingsModal from "../components/SettingsModal";
 import CalculatorView from "../components/CalculatorView";
 import AircraftForm from "../components/AircraftForm"; 
 import LegalDisclaimerModal from "../components/LegalDisclaimerModal";
+import LandingPage from "../components/LandingPage"; // <--- IMPORT LANDING PAGE
 import { isPointInPolygon, getCGLimitsAtWeight } from "../utils/calculations";
 
 export interface CustomStation {
@@ -17,8 +18,9 @@ export interface CustomStation {
   arm: number;
 }
 
-
 export default function Home() {
+  // --- STATE ---
+  const [showLanding, setShowLanding] = useState(true); // Default to showing landing page
   const [view, setView] = useState<'list' | 'create' | 'edit' | 'calculator'>('list');
   const [showSettings, setShowSettings] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -39,21 +41,37 @@ export default function Home() {
   const [customEmptyWeight, setCustomEmptyWeight] = useState(0);
   const [customEmptyArm, setCustomEmptyArm] = useState(0);
 
+  // --- INITIALIZATION EFFECTS ---
   useEffect(() => {
+    // 1. Load Fleet
     const loadedFleet = localStorage.getItem("wb_saved_fleet");
     if (loadedFleet) {
       try { setSavedPlanes(JSON.parse(loadedFleet)); } catch (e) { console.error(e); }
     }
+    // 2. Load Theme
     const savedTheme = localStorage.getItem("wb_theme");
     if (savedTheme === "dark") {
       setIsDarkMode(true);
       document.documentElement.classList.add("dark");
     }
+    // 3. Load Legal Status
     const accepted = localStorage.getItem("wb_legal_accepted");
     if (accepted === "true") {
       setHasAcceptedTerms(true);
     }
+    // 4. Check if user has visited before (to skip landing)
+    const hasLaunched = localStorage.getItem("wb_has_launched");
+    if (hasLaunched === "true") {
+        setShowLanding(false);
+    }
   }, []);
+
+  // --- HANDLERS ---
+
+  const handleEnterApp = () => {
+    setShowLanding(false);
+    localStorage.setItem("wb_has_launched", "true");
+  };
 
   const toggleDarkMode = () => {
     const newMode = !isDarkMode;
@@ -247,10 +265,18 @@ export default function Home() {
     };
   }
 
+  // --- RENDER ---
+  
+  // 1. SHOW LANDING PAGE?
+  if (showLanding) {
+    return <LandingPage onEnterApp={handleEnterApp} />;
+  }
+
+  // 2. SHOW APP
   return (
-    <div className={`min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300`}>
+    <div className={`min-h-screen flex flex-col justify-start bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300`}>
       
-      {/* This ensures the modal renders if terms haven't been accepted yet */}
+      {/* LEGAL MODAL (Conditional) */}
       {!hasAcceptedTerms && (
         <LegalDisclaimerModal 
           onAccept={() => {
@@ -259,18 +285,25 @@ export default function Home() {
           }} 
         />
       )}
-      {/* ----------------------------- */}
 
-      {/* <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-8 print:hidden"></main> */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-8 print:hidden">
+      {/* MAIN CONTENT */}
+      <main className="flex-1 w-full p-4 md:p-8 print:hidden">
         
+        {/* HEADER */}
         <div className="mb-6 flex justify-between items-center">
           
-          <div className="flex-1 text-Left">
-            <h1 className="text-2xl font-bold text-blue-900 dark:text-blue-400">StationZero</h1>
-            <h3 className="text-l font-medium text-gray-400 dark:text-gray-400">Weight and Balance Calculator</h3>
-          </div>  
-          
+          {/* LOGO - CLICKABLE TO GO BACK TO LANDING PAGE */}
+          <div 
+             onClick={() => setShowLanding(true)}
+             className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition group"
+             title="Back to Home"
+          >
+             <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-sm group-hover:shadow-md transition-all">S</div>
+             <div className="flex flex-col">
+                 <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-none">StationZero</h1>
+                 <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">W&B Calculator</span>
+             </div>
+          </div>
 
           <div className="flex items-center gap-2">
             <button onClick={toggleDarkMode} className="p-2 text-gray-500 hover:text-yellow-500 dark:text-gray-400 dark:hover:text-yellow-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition">
@@ -284,6 +317,7 @@ export default function Home() {
           </div>
         </div>
 
+        {/* VIEWS */}
         {(view === 'list' || view === 'create' || view === 'edit') && (
           <HangarList 
             savedPlanes={savedPlanes} 
@@ -361,7 +395,6 @@ export default function Home() {
                 emptyWeight={customEmptyWeight}
                 emptyArm={customEmptyArm}
                 fuelArm={results.fuelArm}
-                // --- FIXED: MERGING CUSTOM STATIONS HERE ---
                 stations={[
                     ...selectedPlane.stations.map(s => ({
                         id: s.id, name: s.name, weight: weights[s.id]||0, arm: armOverrides[s.id]??s.arm, moment: (weights[s.id]||0)*(armOverrides[s.id]??s.arm)
@@ -370,7 +403,6 @@ export default function Home() {
                         id: s.id, name: s.name, weight: s.weight, arm: s.arm, moment: s.weight * s.arm
                     }))
                 ]}
-                // -------------------------------------------
                 taxiFuelWeight={fuel.taxi*6}
                 tripFuelWeight={fuel.trip*6}
                 rampWeight={results.rampWeight} 
