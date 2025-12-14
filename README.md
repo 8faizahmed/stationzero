@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StationZero ✈️
 
-## Getting Started
+> **Modern, Offline-First Weight & Balance Calculator for General Aviation.**
 
-First, run the development server:
+![License](https://img.shields.io/badge/license-Proprietary-red.svg)
+![Tech](https://img.shields.io/badge/built%20with-Next.js-black)
+![Style](https://img.shields.io/badge/styled%20with-Tailwind-38B2AC)
+![PWA](https://img.shields.io/badge/PWA-Ready-purple)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+**StationZero** is a progressive web application (PWA) designed to help pilots calculate weight and balance for General Aviation aircraft quickly and accurately. It works completely offline, ensuring functionality even in the cockpit or remote hangars.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+[View Live Demo](https://stationzero.vercel.app) ---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📸 Screenshots
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Hangar Management | Calculator Interface | Printable Manifest |
+|:---:|:---:|:---:|
+| <img src="./assets/screenshot-hangar.png" width="300" alt="Hangar"/> | <img src="./assets/screenshot-calc.png" width="300" alt="Calculator"/> | <img src="./assets/screenshot-print.png" width="300" alt="Print"/> |
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## ✨ Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+* **📱 Offline Capable (PWA):** Installable on iOS and Android. Works without an internet connection.
+* **🛩️ Multi-Aircraft Support:** Manage a fleet of different aircraft with unique profiles.
+* **📊 Dynamic Envelope Graph:** Visual CG plotting for Normal and Utility categories.
+* **⚠️ Safety Checks:** Instant "Go/No-Go" feedback for Takeoff and Landing limits.
+* **📄 Professional Manifest:** Generates a printable, legally-worded PDF report with a signature block.
+* **🌓 Dark Mode:** Optimized for night flight operations to preserve night vision.
+* **🔒 Privacy Focused:** All data is stored locally on your device. No cloud database, no tracking.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🛠️ Tech Stack
 
-## Deploy on Vercel
+* **Framework:** [Next.js 14+](https://nextjs.org/) (App Router)
+* **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+* **Language:** TypeScript
+* **State Management:** React Hooks + LocalStorage API
+* **Deployment:** Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🚀 Getting Started
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1.  **Clone the repository:**
+    ```bash
+    git clone [https://github.com/yourusername/stationzero.git](https://github.com/yourusername/stationzero.git)
+    cd stationzero
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+
+3.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
+
+4.  Open [http://localhost:3000](http://localhost:3000) with your browser.
+
+## ⚠️ Legal Disclaimer
+
+**FOR EDUCATIONAL AND SITUATIONAL AWARENESS PURPOSES ONLY.**
+
+This software is **not** a certified aviation device. It does **not** replace the official Pilot's Operating Handbook (POH) or the specific Weight & Balance data sheet for the aircraft being flown.
+
+The **Pilot in Command (PIC)** is solely responsible for ensuring the aircraft is loaded within approved limits prior to every flight. The developers of StationZero assume no liability for the accuracy of calculations or data entry.
+
+## 🤝 Contact
+
+Created by Faiz - feel free to contact me!
+
+## 📄 License
+
+**Copyright © 2025 StationZero. All Rights Reserved.**
+
+This project is proprietary software. Unauthorized copying, modification, distribution, or use of this file, via any medium, is strictly prohibited.
