@@ -32,7 +32,7 @@ export default function Home() {
 
   const [weights, setWeights] = useState<Record<string, number>>({});
   const [category, setCategory] = useState<'normal' | 'utility'>('normal');
-  const [fuel, setFuel] = useState({ taxi: 1.5, trip: 0, burn: 0 });
+  const [fuel, setFuel] = useState({ taxi: 0, trip: 0, burn: 0 });
   const [toggles, setToggles] = useState({ moments: false, info: false, flightPlan: false });
   const [armOverrides, setArmOverrides] = useState<Record<string, number>>({});
   const [customStations, setCustomStations] = useState<CustomStation[]>([]);

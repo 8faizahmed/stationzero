@@ -41,7 +41,7 @@ export const aircraftList: Aircraft[] = [
     stations: [
       { id: "frontSeat", name: "Pilot & Front Pax", arm: 37.0, maxWeight: 500 },
       { id: "rearSeat", name: "Rear Passengers", arm: 73.0, maxWeight: 500 },
-      { id: "fuel", name: "Fuel (53 gal)", arm: 48.0, maxWeight: 318 },
+      { id: "fuel", name: "Fuel (56 gal)", arm: 48.0, maxWeight: 336 },
       { id: "baggage1", name: "Baggage Area 1", arm: 95.0, maxWeight: 120 },
       { id: "baggage2", name: "Baggage Area 2", arm: 123.0, maxWeight: 50 },
     ],

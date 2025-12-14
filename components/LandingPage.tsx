@@ -126,7 +126,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
       </main>
       
       <footer className="py-8 text-center text-gray-400 text-sm border-t border-gray-100 dark:border-gray-800">
-        <p>&copy; {new Date().getFullYear()} StationZero. All Rights Reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Faiz Ahmed. All Rights Reserved.</p>
       </footer>
     </div>
   );

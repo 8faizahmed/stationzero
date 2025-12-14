@@ -16,17 +16,17 @@
 ## 📸 Screenshots
 
 ### Hangar Management
-<img src="./assets/screenshot-hangar.png" width="700" alt="Hangar Management Interface"/>
+<img src="./public/assets/screenshot-hangar.png" width="700" alt="Hangar Management Interface"/>
 
 <br/>
 
 ### Calculator Interface
-<img src="./assets/screenshot-calculator.png" width="700" alt="Weight and Balance Calculator"/>
+<img src="./public/assets/screenshot-calculator.png" width="700" alt="Weight and Balance Calculator"/>
 
 <br/>
 
 ### Printable Manifest
-<img src="./assets/screenshot-report.png" width="700" alt="Printable Manifest Report"/>
+<img src="./public/assets/screenshot-report.png" width="700" alt="Printable Manifest Report"/>
 
 ---
 
