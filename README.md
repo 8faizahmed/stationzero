@@ -9,13 +9,24 @@
 
 **StationZero** is a progressive web application (PWA) designed to help pilots calculate weight and balance for General Aviation aircraft quickly and accurately. It works completely offline, ensuring functionality even in the cockpit or remote hangars.
 
-[View Live Demo](https://stationzero.vercel.app) ---
+[View Live Demo](https://stationzero.vercel.app)
+
+---
 
 ## 📸 Screenshots
 
-| Hangar Management | Calculator Interface | Printable Manifest |
-|:---:|:---:|:---:|
-| <img src="./assets/screenshot-hangar.png" width="300" alt="Hangar"/> | <img src="./assets/screenshot-calc.png" width="300" alt="Calculator"/> | <img src="./assets/screenshot-print.png" width="300" alt="Print"/> |
+### Hangar Management
+<img src="./assets/screenshot-hangar.png" width="700" alt="Hangar Management Interface"/>
+
+<br/>
+
+### Calculator Interface
+<img src="./assets/screenshot-calculator.png" width="700" alt="Weight and Balance Calculator"/>
+
+<br/>
+
+### Printable Manifest
+<img src="./assets/screenshot-report.png" width="700" alt="Printable Manifest Report"/>
 
 ---
 
