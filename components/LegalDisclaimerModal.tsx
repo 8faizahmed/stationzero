@@ -7,10 +7,11 @@ interface LegalModalProps {
 export default function LegalDisclaimerModal({ onAccept }: LegalModalProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      <div className="bg-white dark:bg-gray-900 max-w-lg w-full rounded-2xl shadow-2xl overflow-hidden border border-red-500/30">
+      {/* CARD CONTAINER: Added max-h-[85vh] and flex-col to handle small screens */}
+      <div className="bg-white dark:bg-gray-900 max-w-lg w-full max-h-[85vh] flex flex-col rounded-2xl shadow-2xl border border-red-500/30">
         
-        {/* Header */}
-        <div className="bg-red-600 p-6 text-center">
+        {/* HEADER (Stays Pinned) */}
+        <div className="bg-red-600 p-6 text-center flex-shrink-0">
           <div className="mx-auto w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-3">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white" className="w-8 h-8">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
@@ -21,8 +22,8 @@ export default function LegalDisclaimerModal({ onAccept }: LegalModalProps) {
           </h2>
         </div>
 
-        {/* Content */}
-        <div className="p-8 space-y-6 text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+        {/* CONTENT (Scrolls independently) */}
+        <div className="p-6 space-y-6 text-gray-700 dark:text-gray-300 text-sm leading-relaxed overflow-y-auto">
           <p className="font-bold text-lg text-gray-900 dark:text-white">
             By using this software, you acknowledge and agree to the following:
           </p>
@@ -47,8 +48,8 @@ export default function LegalDisclaimerModal({ onAccept }: LegalModalProps) {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-6 bg-gray-50 dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800">
+        {/* FOOTER (Stays Pinned) */}
+        <div className="p-6 bg-gray-50 dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
           <button 
             onClick={onAccept}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
