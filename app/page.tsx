@@ -25,7 +25,7 @@ export default function Home() {
   
   // Navigation State
   const [view, setView] = useState<'list' | 'create' | 'edit' | 'calculator'>('list');
-  const [showSettings, setShowSettings] = useState(false); // NEW: Settings Modal
+  const [showSettings, setShowSettings] = useState(false);
   
   // Data State
   const [savedPlanes, setSavedPlanes] = useState<SavedAircraft[]>([]);
@@ -56,6 +56,8 @@ export default function Home() {
   // Flight Planning
   const [taxiFuel, setTaxiFuel] = useState(1.5);
   const [tripFuel, setTripFuel] = useState(0);
+  // NEW: Cruise Burn Rate
+  const [cruiseBurn, setCruiseBurn] = useState(0);
 
   // Overrides
   const [armOverrides, setArmOverrides] = useState<Record<string, number>>({});
@@ -78,7 +80,6 @@ export default function Home() {
   }, []);
 
   // --- 2. IMPORT / EXPORT HANDLERS ---
-  
   const handleExportData = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedPlanes));
     const downloadAnchorNode = document.createElement('a');
@@ -102,7 +103,6 @@ export default function Home() {
       try {
         const json = JSON.parse(event.target?.result as string);
         if (Array.isArray(json)) {
-          // Basic validation could go here
           setSavedPlanes(json);
           localStorage.setItem("wb_saved_fleet", JSON.stringify(json));
           alert("Fleet imported successfully!");
@@ -115,7 +115,6 @@ export default function Home() {
       }
     };
     reader.readAsText(file);
-    // Reset input so same file can be selected again if needed
     e.target.value = ""; 
   };
 
@@ -135,6 +134,7 @@ export default function Home() {
     setCustomStations([]);
     setTaxiFuel(1.5);
     setTripFuel(0);
+    setCruiseBurn(0); // Reset burn
     setCustomEmptyWeight(plane.emptyWeight);
     setCustomEmptyArm(plane.emptyArm);
     setView('calculator');
@@ -274,10 +274,11 @@ export default function Home() {
   };
 
 
-  // --- MATH ---
+  // --- MATH & CALCULATIONS ---
   let rampWeight = customEmptyWeight;
   let rampMoment = customEmptyWeight * customEmptyArm;
   let fuelArm = 0;
+  let totalFuelWeight = 0;
 
   const activeEnvelope = (category === 'utility' && selectedPlane?.utilityEnvelope) 
     ? selectedPlane.utilityEnvelope 
@@ -289,6 +290,7 @@ export default function Home() {
       const isFuel = station.id.toLowerCase().includes("fuel");
       if (isFuel) {
         if (useGallons) weight = weight * 6;
+        totalFuelWeight = weight; // Store total fuel
         fuelArm = armOverrides[station.id] !== undefined ? armOverrides[station.id] : station.arm;
       }
       const effectiveArm = armOverrides[station.id] !== undefined ? armOverrides[station.id] : station.arm;
@@ -320,9 +322,22 @@ export default function Home() {
     landingCG = takeoffCG;
   }
 
+  // --- ENDURANCE CALCULATION ---
+  // (Total Fuel - Taxi Fuel) / Burn Rate
+  const usableTakeoffFuelGal = (totalFuelWeight - taxiWeight) / 6;
+  let enduranceHours = 0;
+  let enduranceMinutes = 0;
+  
+  if (cruiseBurn > 0 && usableTakeoffFuelGal > 0) {
+    const totalHours = usableTakeoffFuelGal / cruiseBurn;
+    enduranceHours = Math.floor(totalHours);
+    enduranceMinutes = Math.floor((totalHours - enduranceHours) * 60);
+  }
+
   const maxGross = Math.max(...activeEnvelope.map(p => p.weight));
   const isTakeoffSafe = takeoffWeight <= maxGross;
   const isLandingSafe = landingWeight <= maxGross;
+
 
   // --- RENDER ---
   return (
@@ -690,32 +705,64 @@ export default function Home() {
                               onArmChange={(val) => handleArmOverride(station.id, val)}
                               onToggleUnit={() => setUseGallons(!useGallons)}
                             />
+                            
+                            {/* NEW: Flight Planning Row with ENDURANCE */}
                             {isFuel && showFlightPlan && (
                               <div className="bg-blue-50/50 border-t border-b border-blue-100 px-4 py-3 grid grid-cols-2 gap-4 animate-fade-in">
-                                <div className="flex flex-col gap-1">
-                                  <label className="text-[10px] uppercase font-bold text-blue-800 tracking-wider">Taxi Fuel</label>
-                                  <div className="flex items-center gap-2 bg-white border border-blue-200 rounded-lg px-2">
-                                    <input 
-                                      type="number"
-                                      value={taxiFuel}
-                                      onChange={(e) => setTaxiFuel(parseFloat(e.target.value) || 0)}
-                                      className="w-full py-1.5 text-sm text-gray-700 focus:outline-none"
-                                    />
-                                    <span className="text-[10px] text-gray-400 font-medium">GAL</span>
-                                  </div>
+                                <div className="space-y-2">
+                                    <div className="flex flex-col gap-1">
+                                      <label className="text-[10px] uppercase font-bold text-blue-800 tracking-wider">Taxi Fuel</label>
+                                      <div className="flex items-center gap-2 bg-white border border-blue-200 rounded-lg px-2">
+                                        <input 
+                                          type="number"
+                                          value={taxiFuel}
+                                          onChange={(e) => setTaxiFuel(parseFloat(e.target.value) || 0)}
+                                          className="w-full py-1.5 text-sm text-gray-700 focus:outline-none"
+                                        />
+                                        <span className="text-[10px] text-gray-400 font-medium">GAL</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                      <label className="text-[10px] uppercase font-bold text-blue-800 tracking-wider">Cruise Burn (GPH)</label>
+                                      <div className="flex items-center gap-2 bg-white border border-blue-200 rounded-lg px-2">
+                                        <input 
+                                          type="number"
+                                          value={cruiseBurn || ""}
+                                          onChange={(e) => setCruiseBurn(parseFloat(e.target.value) || 0)}
+                                          className="w-full py-1.5 text-sm text-gray-700 focus:outline-none"
+                                          placeholder="0"
+                                        />
+                                        <span className="text-[10px] text-gray-400 font-medium">GPH</span>
+                                      </div>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                  <label className="text-[10px] uppercase font-bold text-blue-800 tracking-wider">Flight Burn</label>
-                                  <div className="flex items-center gap-2 bg-white border border-blue-200 rounded-lg px-2">
-                                    <input 
-                                      type="number"
-                                      value={tripFuel || ""}
-                                      onChange={(e) => setTripFuel(parseFloat(e.target.value) || 0)}
-                                      className="w-full py-1.5 text-sm text-gray-700 focus:outline-none"
-                                      placeholder="0"
-                                    />
-                                    <span className="text-[10px] text-gray-400 font-medium">GAL</span>
-                                  </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex flex-col gap-1">
+                                      <label className="text-[10px] uppercase font-bold text-blue-800 tracking-wider">Flight Burn</label>
+                                      <div className="flex items-center gap-2 bg-white border border-blue-200 rounded-lg px-2">
+                                        <input 
+                                          type="number"
+                                          value={tripFuel || ""}
+                                          onChange={(e) => setTripFuel(parseFloat(e.target.value) || 0)}
+                                          className="w-full py-1.5 text-sm text-gray-700 focus:outline-none"
+                                          placeholder="0"
+                                        />
+                                        <span className="text-[10px] text-gray-400 font-medium">GAL</span>
+                                      </div>
+                                    </div>
+
+                                    {/* ENDURANCE DISPLAY */}
+                                    <div className="bg-blue-600 rounded-lg p-2 text-white text-center flex flex-col justify-center h-[54px]">
+                                        <span className="text-[10px] uppercase font-bold opacity-80">Est. Endurance</span>
+                                        {cruiseBurn > 0 && usableTakeoffFuelGal > 0 ? (
+                                            <span className="text-xl font-bold leading-none">
+                                                {enduranceHours}h <span className="text-sm font-normal opacity-80">{enduranceMinutes}m</span>
+                                            </span>
+                                        ) : (
+                                            <span className="text-sm opacity-60">-- h -- m</span>
+                                        )}
+                                    </div>
                                 </div>
                               </div>
                             )}
