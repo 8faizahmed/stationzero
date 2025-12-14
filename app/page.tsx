@@ -8,7 +8,7 @@ import SettingsModal from "../components/SettingsModal";
 import CalculatorView from "../components/CalculatorView";
 import AircraftForm from "../components/AircraftForm"; 
 import LegalDisclaimerModal from "../components/LegalDisclaimerModal";
-import LandingPage from "../components/LandingPage"; // <--- IMPORT LANDING PAGE
+import LandingPage from "../components/LandingPage"; 
 import { isPointInPolygon, getCGLimitsAtWeight } from "../utils/calculations";
 
 export interface CustomStation {
@@ -20,7 +20,7 @@ export interface CustomStation {
 
 export default function Home() {
   // --- STATE ---
-  const [showLanding, setShowLanding] = useState(true); // Default to showing landing page
+  const [showLanding, setShowLanding] = useState(true);
   const [view, setView] = useState<'list' | 'create' | 'edit' | 'calculator'>('list');
   const [showSettings, setShowSettings] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -43,23 +43,19 @@ export default function Home() {
 
   // --- INITIALIZATION EFFECTS ---
   useEffect(() => {
-    // 1. Load Fleet
     const loadedFleet = localStorage.getItem("wb_saved_fleet");
     if (loadedFleet) {
       try { setSavedPlanes(JSON.parse(loadedFleet)); } catch (e) { console.error(e); }
     }
-    // 2. Load Theme
     const savedTheme = localStorage.getItem("wb_theme");
     if (savedTheme === "dark") {
       setIsDarkMode(true);
       document.documentElement.classList.add("dark");
     }
-    // 3. Load Legal Status
     const accepted = localStorage.getItem("wb_legal_accepted");
     if (accepted === "true") {
       setHasAcceptedTerms(true);
     }
-    // 4. Check if user has visited before (to skip landing)
     const hasLaunched = localStorage.getItem("wb_has_launched");
     if (hasLaunched === "true") {
         setShowLanding(false);
@@ -67,7 +63,6 @@ export default function Home() {
   }, []);
 
   // --- HANDLERS ---
-
   const handleEnterApp = () => {
     setShowLanding(false);
     localStorage.setItem("wb_has_launched", "true");
@@ -265,18 +260,15 @@ export default function Home() {
     };
   }
 
-  // --- RENDER ---
-  
   // 1. SHOW LANDING PAGE?
   if (showLanding) {
     return <LandingPage onEnterApp={handleEnterApp} />;
   }
 
-  // 2. SHOW APP
+  // 2. SHOW APP - ENHANCED LAYOUT
   return (
-    <div className={`min-h-screen flex flex-col justify-start bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300`}>
+    <div className={`min-h-screen flex flex-col justify-start bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300`}>
       
-      {/* LEGAL MODAL (Conditional) */}
       {!hasAcceptedTerms && (
         <LegalDisclaimerModal 
           onAccept={() => {
@@ -286,37 +278,39 @@ export default function Home() {
         />
       )}
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 w-full p-4 md:p-8 print:hidden">
-        
-        {/* HEADER */}
-        <div className="mb-6 flex justify-between items-center">
+      {/* STICKY GLASS HEADER */}
+      <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/70 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 transition-all duration-300">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 h-16 flex justify-between items-center">
           
-          {/* LOGO - CLICKABLE TO GO BACK TO LANDING PAGE */}
+          {/* LOGO */}
           <div 
-             onClick={() => setShowLanding(true)}
-             className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition group"
-             title="Back to Home"
+              onClick={() => setShowLanding(true)}
+              className="flex items-center gap-3 cursor-pointer group"
+              title="Back to Home"
           >
-             <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-sm group-hover:shadow-md transition-all">S</div>
-             <div className="flex flex-col">
-                 <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-none">StationZero</h1>
-                 <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">W&B Calculator</span>
-             </div>
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm group-hover:scale-105 transition-transform">S</div>
+              <div className="flex flex-col">
+                  <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none">StationZero</h1>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">W&B Calculator</span>
+              </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={toggleDarkMode} className="p-2 text-gray-500 hover:text-yellow-500 dark:text-gray-400 dark:hover:text-yellow-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition">
+            <button onClick={toggleDarkMode} className="p-2 text-slate-500 hover:text-yellow-500 dark:text-slate-400 dark:hover:text-yellow-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all">
               {isDarkMode ? "🌙" : "☀️"}
             </button>
             {view === 'list' && (
-              <button onClick={() => setShowSettings(true)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition">
+              <button onClick={() => setShowSettings(true)} className="p-2 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all">
                 ⚙️
               </button>
             )}
           </div>
         </div>
+      </header>
 
+      {/* MAIN CONTENT WRAPPER */}
+      <main className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8 print:hidden">
+        
         {/* VIEWS */}
         {(view === 'list' || view === 'create' || view === 'edit') && (
           <HangarList 
@@ -382,10 +376,11 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="py-8 text-center print:hidden border-t border-gray-200 dark:border-gray-800 mt-auto">
-        <a href="/legal" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">Legal Disclaimer & Terms of Use</a>
+      <footer className="py-8 text-center print:hidden border-t border-slate-200 dark:border-slate-800 mt-auto bg-slate-50 dark:bg-slate-950">
+        <a href="/legal" className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">Legal Disclaimer & Terms of Use</a>
       </footer>
 
+      {/* REPORT GENERATION (Hidden) */}
       {selectedPlane && (
         <div className="hidden print:block">
             <ManifestReport 

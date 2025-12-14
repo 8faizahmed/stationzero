@@ -1,80 +1,171 @@
-import { Aircraft } from "../data/aircraft";
+import React from 'react';
+import { Aircraft, SavedAircraft } from '../data/aircraft';
+
+// Simple SVG Silhouettes for visual enhancement
+const ICONS = {
+  highWing: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full opacity-10">
+      <path d="M21 14l-2.5-8h-13L3 14h2l1-4h12l1 4h2z M2 16h20v2H2z" />
+    </svg>
+  ),
+  lowWing: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full opacity-10">
+      <path d="M2 12l8 2 2-6 2 6 8-2v2l-10 4-10-4z M10 16h4v2h-4z" />
+    </svg>
+  )
+};
+
+// Helper to safely determine the icon based on any string (make, model, or name)
+const getIconForPlane = (str?: string) => {
+  if (!str) return ICONS.lowWing; 
+  if (str.toLowerCase().includes('cessna')) return ICONS.highWing;
+  return ICONS.lowWing;
+};
 
 interface HangarListProps {
-  savedPlanes: any[];
+  savedPlanes: SavedAircraft[];
   templates: Aircraft[];
-  onSelect: (plane: any) => void;
-  onAddToFleet: (plane: any) => void;
-  onAdd: () => void; 
-  onEdit: (e: React.MouseEvent, plane: any) => void;
+  onSelect: (plane: Aircraft | SavedAircraft) => void;
+  onAddToFleet: (plane: Aircraft) => void;
+  onAdd: () => void;
+  onEdit: (e: React.MouseEvent, plane: SavedAircraft) => void;
   onDelete: (e: React.MouseEvent, id: string) => void;
 }
 
-export default function HangarList({ savedPlanes, templates, onSelect, onAddToFleet, onAdd, onEdit, onDelete }: HangarListProps) {
+export default function HangarList({
+  savedPlanes,
+  templates,
+  onSelect,
+  onAddToFleet,
+  onAdd,
+  onEdit,
+  onDelete
+}: HangarListProps) {
+  
   return (
-    <div className="space-y-8">
-      {/* MY HANGAR */}
-      <div>
-        <div className="flex justify-between items-end mb-4">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">My Hangar</h2>
-          
-          {/* THIS BUTTON TRIGGER */}
-          <button 
-            onClick={onAdd} 
-            className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-blue-700 transition"
-          >
-            + Add Aircraft
-          </button>
+    <div className="space-y-12 animate-fade-in">
+      
+      {/* SECTION: MY HANGAR */}
+      <section>
+        <div className="flex justify-between items-end mb-6">
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            ✈️ My Hangar
+          </h2>
+          {savedPlanes.length > 0 && (
+            <button onClick={onAdd} className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline">
+              + New Aircraft
+            </button>
+          )}
         </div>
-        
+
         {savedPlanes.length === 0 ? (
-          <div className="p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-400">
-            <p className="mb-2">No aircraft in your hangar yet.</p>
-            {/* EMPTY STATE TRIGGER */}
-            <button onClick={onAdd} className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800">
-              Add your first plane
+          <div className="p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl flex flex-col items-center justify-center text-center bg-slate-50 dark:bg-slate-900/50">
+            <p className="text-slate-500 mb-4">Your hangar is empty.</p>
+            <button 
+              onClick={onAdd} 
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all shadow-md hover:shadow-lg"
+            >
+              Add Your First Aircraft
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {savedPlanes.map((plane) => (
-              <button key={plane.id} onClick={() => onSelect(plane)} className="relative p-6 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 rounded-xl shadow-sm hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md transition text-left group">
-                <span className="absolute top-4 right-4 text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-bold">{plane.registration}</span>
-                <h2 className="font-bold text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 text-gray-900 dark:text-white">{plane.model}</h2>
-                <p className="text-gray-400 text-sm mt-1">BEW: {plane.emptyWeight} lbs</p>
-                <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div onClick={(e) => onEdit(e, plane)} className="p-2 text-gray-400 hover:text-blue-600 bg-gray-50 dark:bg-gray-700 rounded-full hover:bg-blue-50 dark:hover:bg-gray-600" title="Edit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg></div>
-                    <div onClick={(e) => onDelete(e, plane.id)} className="p-2 text-gray-400 hover:text-red-600 bg-gray-50 dark:bg-gray-700 rounded-full hover:bg-red-50 dark:hover:bg-gray-600" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {savedPlanes.map((plane) => {
+               // Fallback logic for display name
+               const displayName = plane.name || plane.model || "Unknown Type";
+               
+               return (
+                <div 
+                  key={plane.id} 
+                  onClick={() => onSelect(plane)}
+                  className="group relative bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-slate-100 dark:border-slate-700 overflow-hidden"
+                >
+                  {/* Decorative Silhouette Background - Check make or name for correct shape */}
+                  <div className="absolute -right-4 -top-4 w-32 h-32 text-slate-100 dark:text-slate-700 pointer-events-none group-hover:scale-110 transition-transform duration-500">
+                    {getIconForPlane(plane.make || plane.name)}
+                  </div>
+
+                  {/* Content */}
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start">
+                      <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">
+                        {displayName}
+                      </span>
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={(e) => onEdit(e, plane)}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors"
+                          title="Edit Configuration"
+                        >
+                          ✏️
+                        </button>
+                        <button 
+                          onClick={(e) => onDelete(e, plane.id)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
+                          title="Delete"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
+                      {plane.registration}
+                    </h3>
+                    
+                    <div className="flex gap-4 mt-3 text-sm text-slate-500 dark:text-slate-400">
+                      <div>
+                        <span className="block text-[10px] uppercase font-bold text-slate-400">BEW</span>
+                        {plane.emptyWeight} lbs
+                      </div>
+                      <div>
+                        <span className="block text-[10px] uppercase font-bold text-slate-400">Arm</span>
+                        {plane.emptyArm}"
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Active Indicator Strip */}
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* FACTORY TEMPLATES */}
-      <div id="templates" className="pt-8 border-t border-gray-200 dark:border-gray-800">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">Factory Templates</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.map((plane) => (
-            <button key={plane.id} onClick={() => onSelect(plane)} className="relative p-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-white dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-600 hover:shadow-sm transition text-left group">
-              <h2 className="font-bold text-base text-gray-700 dark:text-gray-200">{plane.model}</h2>
-              <p className="text-gray-400 text-xs">{plane.make}</p>
-              
-              {/* ADD TO FLEET BUTTON */}
-              <div 
-                onClick={(e) => { e.stopPropagation(); onAddToFleet(plane); }}
-                className="absolute top-4 right-4 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-600 hover:text-white text-blue-600 dark:text-blue-300 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                title="Add to My Hangar"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                  <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-                </svg>
+      {/* SECTION: FACTORY TEMPLATES */}
+      <section>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2 opacity-80">
+          🏭 Factory Templates
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {templates.map((template) => (
+            <button
+              key={template.id}
+              onClick={() => onAddToFleet(template)}
+              className="flex items-center gap-3 p-3 text-left bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all group"
+            >
+              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-lg group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
+                {/* Use the make (e.g. Cessna) to pick the icon, or fallback to '+' */}
+                <div className="w-5 h-5 opacity-50">
+                   {getIconForPlane(template.make || template.name)}
+                </div>
+              </div>
+              <div className="min-w-0"> {/* min-w-0 forces text truncation if needed */}
+                <span className="block text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                  {/* FIX: Try model first, then name */}
+                  {template.model || template.name || "Unknown Model"}
+                </span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wide truncate block">
+                   {/* FIX: Show Make if available (e.g. Cessna), else 'Add to Fleet' */}
+                   {template.make || "Add to Fleet"}
+                </span>
               </div>
             </button>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
