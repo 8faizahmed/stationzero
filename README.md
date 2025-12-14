@@ -82,6 +82,6 @@ Created by Faiz - feel free to contact me!
 
 ## 📄 License
 
-**Copyright © 2025 StationZero. All Rights Reserved.**
+**Copyright © 2025 Faiz Ahmed. All Rights Reserved.**
 
 This project is proprietary software. Unauthorized copying, modification, distribution, or use of this file, via any medium, is strictly prohibited.
