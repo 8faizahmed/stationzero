@@ -7,8 +7,8 @@ interface LegalModalProps {
 export default function LegalDisclaimerModal({ onAccept }: LegalModalProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      {/* CARD CONTAINER: Added max-h-[85vh] and flex-col to handle small screens */}
-      <div className="bg-white dark:bg-gray-900 max-w-lg w-full max-h-[85vh] flex flex-col rounded-2xl shadow-2xl border border-red-500/30">
+      {/* CARD CONTAINER: Added overflow-hidden to clip inner corners */}
+      <div className="bg-white dark:bg-gray-900 max-w-lg w-full max-h-[85vh] flex flex-col rounded-2xl shadow-2xl border border-red-500/30 overflow-hidden">
         
         {/* HEADER (Stays Pinned) */}
         <div className="bg-red-600 p-6 text-center flex-shrink-0">
