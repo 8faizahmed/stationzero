@@ -74,7 +74,7 @@ export default function CalculatorView({
         <button onClick={onBack} className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 mb-2">← Back to hangar</button>
         <div className="flex items-center justify-between">
            <div className="flex items-center gap-3">
-             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{plane.model}</h2>
+             <h2 className="text-xl font-bold text-gray-900 dark:text-white">{plane.model}</h2>
              {plane.registration && <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm font-mono font-bold px-2 py-1 rounded">{plane.registration}</span>}
            </div>
            <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-blue-700 transition">
