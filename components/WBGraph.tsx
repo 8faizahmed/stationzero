@@ -19,7 +19,7 @@ interface WBGraphProps {
   takeoffCG: number;
   landingWeight?: number;
   landingCG?: number;
-  isDark: boolean; // NEW PROP
+  isDark: boolean;
 }
 
 const RenderTakeoffPoint = (props: any) => {
@@ -43,10 +43,11 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
   const allWeights = [takeoffWeight, ...(landingWeight ? [landingWeight] : []), ...envelope.map(p => p.weight)];
   const allCGs = [takeoffCG, ...(landingCG ? [landingCG] : []), ...envelope.map(p => p.cg)];
 
-  const minCG = Math.min(...allCGs) - 1.5;
-  const maxCG = Math.max(...allCGs) + 1.5;
-  const minWeight = Math.min(...allWeights) - 200;
-  const maxWeight = Math.max(...allWeights) + 200;
+  // Calculate domain with padding
+  const minCG = Math.floor(Math.min(...allCGs) - 1.5);
+  const maxCG = Math.ceil(Math.max(...allCGs) + 1.5);
+  const minWeight = Math.floor((Math.min(...allWeights) - 200) / 100) * 100;
+  const maxWeight = Math.ceil((Math.max(...allWeights) + 200) / 100) * 100;
 
   // Colors based on mode
   const axisColor = isDark ? "#9ca3af" : "#4b5563"; // gray-400 vs gray-600
@@ -57,7 +58,7 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
     <div className="w-full h-full flex flex-col">
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 20, right: 20, bottom: 10, left: 5 }}>
+          <ScatterChart margin={{ top: 20, right: 30, bottom: 0, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
             
             <XAxis 
@@ -69,9 +70,15 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
               tickCount={5}
               tickFormatter={(val) => val.toFixed(1)}
               stroke={axisColor}
-              tick={{ fill: axisColor }}
+              tick={{ fill: axisColor, fontSize: 12 }}
             >
-              <Label value="Center of Gravity (inches)" offset={-10} position="insideBottom" fill={axisColor} />
+              {/* <Label 
+                value="Center of Gravity (inches)" 
+                offset={0} 
+                position="insideBottom" 
+                fill={axisColor} 
+                style={{ fontSize: '12px', fontWeight: 'bold' }}
+              /> */}
             </XAxis>
 
             <YAxis 
@@ -81,8 +88,16 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
               domain={[minWeight, maxWeight]} 
               unit=" lbs"
               stroke={axisColor}
-              tick={{ fill: axisColor }}
-            />
+              tick={{ fill: axisColor, fontSize: 12 }}
+            >
+               {/* <Label 
+                value="Weight (lbs)" 
+                angle={-90} 
+                position="insideLeft" 
+                fill={axisColor}
+                style={{ textAnchor: 'middle', fontSize: '12px', fontWeight: 'bold' }}
+              /> */}
+            </YAxis>
             
             <Tooltip 
               cursor={{ strokeDasharray: '3 3' }} 
