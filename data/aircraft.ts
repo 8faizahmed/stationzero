@@ -41,7 +41,7 @@ export const aircraftList: Aircraft[] = [
     stations: [
       { id: "frontSeat", name: "Pilot & Front Pax", arm: 37.0, maxWeight: 500 },
       { id: "rearSeat", name: "Rear Passengers", arm: 73.0, maxWeight: 500 },
-      { id: "fuel", name: "Fuel (56 gal)", arm: 48.0, maxWeight: 336 },
+      { id: "fuel", name: "Fuel (53 Gal Useable)", arm: 48.0, maxWeight: 336 },
       { id: "baggage1", name: "Baggage Area 1", arm: 95.0, maxWeight: 120 },
       { id: "baggage2", name: "Baggage Area 2", arm: 123.0, maxWeight: 50 },
     ],
@@ -76,7 +76,7 @@ export const aircraftList: Aircraft[] = [
     stations: [
       { id: "frontSeat", name: "Pilot & Front Pax", arm: 37.0, maxWeight: 400 },
       { id: "rearSeat", name: "Rear Passengers", arm: 73.0, maxWeight: 400 },
-      { id: "fuel", name: "Fuel (40 gal)", arm: 48.0, maxWeight: 240 },
+      { id: "fuel", name: "Fuel (40 Gal Useable)", arm: 48.0, maxWeight: 240 },
       { id: "baggage1", name: "Baggage Area 1", arm: 95.0, maxWeight: 120 },
       { id: "baggage2", name: "Baggage Area 2", arm: 123.0, maxWeight: 50 },
     ],
@@ -111,7 +111,7 @@ export const aircraftList: Aircraft[] = [
     stations: [
       { id: "frontSeat", name: "Pilot & Front Pax", arm: 37.0, maxWeight: 400 },
       { id: "rearSeat", name: "Rear Passengers", arm: 73.0, maxWeight: 400 },
-      { id: "fuel", name: "Fuel (38 gal)", arm: 48.0, maxWeight: 228 }, 
+      { id: "fuel", name: "Fuel (38 Gal Useable)", arm: 48.0, maxWeight: 228 }, 
       { id: "baggage1", name: "Baggage Area 1", arm: 95.0, maxWeight: 120 },
       { id: "baggage2", name: "Baggage Area 2", arm: 123.0, maxWeight: 50 },
     ],
@@ -145,7 +145,7 @@ export const aircraftList: Aircraft[] = [
     emptyArm: 30.0,
     stations: [
       { id: "frontSeat", name: "Pilot & Passenger", arm: 39.0, maxWeight: 400 },
-      { id: "fuel", name: "Fuel (24.5 gal)", arm: 42.0, maxWeight: 147 },
+      { id: "fuel", name: "Fuel (24.5 Gal Useable)", arm: 42.0, maxWeight: 147 },
       { id: "baggage1", name: "Baggage Area 1", arm: 64.0, maxWeight: 120 },
       { id: "baggage2", name: "Baggage Area 2", arm: 84.0, maxWeight: 40 },
     ],
@@ -177,7 +177,7 @@ export const aircraftList: Aircraft[] = [
     emptyArm: 33.0,
     stations: [
       { id: "frontSeat", name: "Pilot & Passenger", arm: 39.0, maxWeight: 400 },
-      { id: "fuel", name: "Fuel (22.5 gal)", arm: 42.0, maxWeight: 135 },
+      { id: "fuel", name: "Fuel (22.5 Gal Useable)", arm: 42.0, maxWeight: 135 },
       { id: "baggage1", name: "Baggage Area 1", arm: 64.0, maxWeight: 120 },
       { id: "baggage2", name: "Baggage Area 2", arm: 84.0, maxWeight: 40 },
     ],
@@ -211,7 +211,7 @@ export const aircraftList: Aircraft[] = [
     stations: [
       { id: "frontSeat", name: "Pilot & Co-Pilot", arm: 80.5, maxWeight: 400 },
       { id: "rearSeat", name: "Rear Passengers", arm: 118.1, maxWeight: 400 },
-      { id: "fuel", name: "Fuel (48 gal)", arm: 95.0, maxWeight: 288 },
+      { id: "fuel", name: "Fuel (48 Gal Useable)", arm: 95.0, maxWeight: 288 },
       { id: "baggage", name: "Baggage Area", arm: 142.8, maxWeight: 200 },
     ],
     // NORMAL CATEGORY (Max 2550 lbs)
@@ -246,7 +246,7 @@ export const aircraftList: Aircraft[] = [
     stations: [
       { id: "frontSeat", name: "Pilot & Co-Pilot", arm: 90.6, maxWeight: 400 },
       { id: "rearSeat", name: "Rear Passengers", arm: 128.0, maxWeight: 350 },
-      { id: "fuel", name: "Fuel (50 gal)", arm: 103.5, maxWeight: 300 },
+      { id: "fuel", name: "Fuel (50 Gal Useable)", arm: 103.5, maxWeight: 300 },
       { id: "baggage", name: "Baggage", arm: 143.7, maxWeight: 66 },
     ],
     // NORMAL CATEGORY (Max 2646 lbs)

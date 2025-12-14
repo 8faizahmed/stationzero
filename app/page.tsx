@@ -391,9 +391,24 @@ export default function Home() {
                 emptyArm={customEmptyArm}
                 fuelArm={results.fuelArm}
                 stations={[
-                    ...selectedPlane.stations.map(s => ({
-                        id: s.id, name: s.name, weight: weights[s.id]||0, arm: armOverrides[s.id]??s.arm, moment: (weights[s.id]||0)*(armOverrides[s.id]??s.arm)
-                    })),
+                    // FIX: Convert Fuel Weight to LBS for report if in Gallons mode
+                    ...selectedPlane.stations.map(s => {
+                        let weight = weights[s.id] || 0;
+                        const arm = armOverrides[s.id] !== undefined ? armOverrides[s.id] : s.arm;
+                        
+                        // IF Fuel Station AND Gallons Mode is active -> Convert to Lbs
+                        if (s.id.toLowerCase().includes("fuel") && useGallons) {
+                            weight = weight * 6;
+                        }
+
+                        return {
+                            id: s.id, 
+                            name: s.name, 
+                            weight: weight, 
+                            arm: arm, 
+                            moment: weight * arm
+                        };
+                    }),
                     ...customStations.map(s => ({
                         id: s.id, name: s.name, weight: s.weight, arm: s.arm, moment: s.weight * s.arm
                     }))
