@@ -23,6 +23,12 @@ export interface Aircraft {
   utilityEnvelope?: EnvelopePoint[];
 }
 
+export interface SavedAircraft extends Aircraft {
+  registration: string;
+  isCustomPlane: true;
+  savedArmOverrides?: Record<string, number>;
+}
+
 export const aircraftList: Aircraft[] = [
   // --- CESSNA 172S (Skyhawk SP) ---
   // Source: FAA TCDS 3A12 Rev 47 & 172S POH (Section 2)

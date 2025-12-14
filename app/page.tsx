@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { aircraftList, Aircraft } from "../data/aircraft";
+import { aircraftList, Aircraft, SavedAircraft } from "../data/aircraft";
 import ManifestReport from "../components/ManifestReport";
 import HangarList from "../components/HangarList";
 import SettingsModal from "../components/SettingsModal";
@@ -16,11 +16,6 @@ export interface CustomStation {
   arm: number;
 }
 
-export interface SavedAircraft extends Aircraft {
-  registration: string;
-  isCustomPlane: true;
-  savedArmOverrides?: Record<string, number>;
-}
 
 export default function Home() {
   const [view, setView] = useState<'list' | 'create' | 'edit' | 'calculator'>('list');
