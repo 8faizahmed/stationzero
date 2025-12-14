@@ -14,35 +14,38 @@ interface CustomStation {
   arm: number;
 }
 
-// A saved plane is just an Aircraft with a custom registration and flag
 interface SavedAircraft extends Aircraft {
   registration: string; // e.g., "C-GABC"
   isCustomPlane: true;
-  savedArmOverrides?: Record<string, number>; // NEW: Store modified station arms
+  savedArmOverrides?: Record<string, number>;
 }
 
 export default function Home() {
   // --- STATE ---
   
   // Navigation State
-  const [view, setView] = useState<'list' | 'create' | 'calculator'>('list');
+  const [view, setView] = useState<'list' | 'create' | 'edit' | 'calculator'>('list');
   
   // Data State
   const [savedPlanes, setSavedPlanes] = useState<SavedAircraft[]>([]);
   const [selectedPlane, setSelectedPlane] = useState<Aircraft | SavedAircraft | null>(null);
   
-  // Creation Form State
+  // Creation/Edit Form State
   const [newPlaneTemplate, setNewPlaneTemplate] = useState<Aircraft | null>(null);
   const [newPlaneReg, setNewPlaneReg] = useState("");
   const [newPlaneWeight, setNewPlaneWeight] = useState("");
   const [newPlaneArm, setNewPlaneArm] = useState("");
+  const [editingPlaneId, setEditingPlaneId] = useState<string | null>(null);
+  
+  // NEW: Track station arms while editing in the modal
+  const [editingStationArms, setEditingStationArms] = useState<Record<string, number>>({});
 
   // Calculator State
   const [weights, setWeights] = useState<Record<string, number>>({});
   const [useGallons, setUseGallons] = useState(true);
   const [category, setCategory] = useState<'normal' | 'utility'>('normal');
 
-  // Config State (The values currently being edited)
+  // Config State
   const [customEmptyWeight, setCustomEmptyWeight] = useState(0);
   const [customEmptyArm, setCustomEmptyArm] = useState(0);
   
@@ -60,7 +63,7 @@ export default function Home() {
   const [customStations, setCustomStations] = useState<CustomStation[]>([]);
 
 
-  // --- 1. INITIAL LOAD (Load Fleet) ---
+  // --- 1. INITIAL LOAD ---
   useEffect(() => {
     const loadedFleet = localStorage.getItem("wb_saved_fleet");
     if (loadedFleet) {
@@ -72,15 +75,13 @@ export default function Home() {
     }
   }, []);
 
-  // --- 2. PLANE SELECTION HANDLER ---
+  // --- 2. PLANE SELECTION ---
   const handleSelectPlane = (plane: Aircraft | SavedAircraft) => {
     setSelectedPlane(plane);
-    
-    // Reset Calculator
     setCategory('normal');
     setWeights({});
     
-    // UPDATED: Load Saved Arm Overrides if they exist
+    // Load overrides if they exist
     if ('savedArmOverrides' in plane && plane.savedArmOverrides) {
       setArmOverrides(plane.savedArmOverrides);
     } else {
@@ -90,44 +91,82 @@ export default function Home() {
     setCustomStations([]);
     setTaxiFuel(1.5);
     setTripFuel(0);
-
-    // Load Weights
     setCustomEmptyWeight(plane.emptyWeight);
     setCustomEmptyArm(plane.emptyArm);
-
     setView('calculator');
   };
 
-  // --- 3. CREATE NEW PLANE HANDLER ---
-  const handleCreatePlane = () => {
+  // --- 3. CREATE / UPDATE HANDLERS ---
+  
+  // Open the Edit Modal
+  const handleEditClick = (e: React.MouseEvent, plane: SavedAircraft) => {
+    e.stopPropagation();
+    setNewPlaneTemplate(plane); 
+    setNewPlaneReg(plane.registration);
+    setNewPlaneWeight(plane.emptyWeight.toString());
+    setNewPlaneArm(plane.emptyArm.toString());
+    setEditingPlaneId(plane.id);
+    
+    // Initialize editing arms with saved overrides OR factory defaults
+    const currentArms: Record<string, number> = {};
+    plane.stations.forEach(s => {
+      // Use saved override if exists, otherwise use factory default
+      currentArms[s.id] = plane.savedArmOverrides?.[s.id] ?? s.arm;
+    });
+    setEditingStationArms(currentArms);
+
+    setView('edit');
+  };
+
+  // Save (Create OR Update)
+  const handleSavePlane = () => {
     if (!newPlaneTemplate || !newPlaneReg) return;
 
     const weight = parseFloat(newPlaneWeight) || newPlaneTemplate.emptyWeight;
     const arm = parseFloat(newPlaneArm) || newPlaneTemplate.emptyArm;
 
-    const newPlane: SavedAircraft = {
-      ...newPlaneTemplate,
-      id: `${newPlaneTemplate.id}-${Date.now()}`, // Unique ID
-      registration: newPlaneReg.toUpperCase(),
-      emptyWeight: weight,
-      emptyArm: arm,
-      isCustomPlane: true,
-      model: newPlaneTemplate.model,
-      savedArmOverrides: {} // Initialize empty overrides
-    };
+    let updatedFleet;
 
-    const updatedFleet = [...savedPlanes, newPlane];
+    if (view === 'edit' && editingPlaneId) {
+      // UPDATE EXISTING
+      updatedFleet = savedPlanes.map(p => {
+        if (p.id === editingPlaneId) {
+          return {
+            ...p,
+            registration: newPlaneReg.toUpperCase(),
+            emptyWeight: weight,
+            emptyArm: arm,
+            savedArmOverrides: editingStationArms, // Save the edited arms
+          };
+        }
+        return p;
+      });
+    } else {
+      // CREATE NEW
+      const newPlane: SavedAircraft = {
+        ...newPlaneTemplate,
+        id: `${newPlaneTemplate.id}-${Date.now()}`,
+        registration: newPlaneReg.toUpperCase(),
+        emptyWeight: weight,
+        emptyArm: arm,
+        isCustomPlane: true,
+        model: newPlaneTemplate.model,
+        savedArmOverrides: editingStationArms // Save the initial arms
+      };
+      updatedFleet = [...savedPlanes, newPlane];
+    }
+
     setSavedPlanes(updatedFleet);
     localStorage.setItem("wb_saved_fleet", JSON.stringify(updatedFleet));
     
-    // Reset Form
+    // Reset & Close
     setNewPlaneTemplate(null);
     setNewPlaneReg("");
     setNewPlaneWeight("");
     setNewPlaneArm("");
-    
-    // Open the new plane immediately
-    handleSelectPlane(newPlane);
+    setEditingStationArms({});
+    setEditingPlaneId(null);
+    setView('list');
   };
 
   const handleDeletePlane = (e: React.MouseEvent, id: string) => {
@@ -140,17 +179,16 @@ export default function Home() {
   };
 
 
-  // --- 4. AUTO-SAVE (When editing weight OR ARMS in Calculator) ---
+  // --- 4. AUTO-SAVE (Calculator Changes) ---
   useEffect(() => {
     if (selectedPlane && 'isCustomPlane' in selectedPlane) {
-      // Only auto-save if we are editing a "My Fleet" plane
       const updatedFleet = savedPlanes.map(p => {
         if (p.id === selectedPlane.id) {
           return { 
             ...p, 
             emptyWeight: customEmptyWeight, 
             emptyArm: customEmptyArm,
-            savedArmOverrides: armOverrides // UPDATED: Save Arm Overrides
+            savedArmOverrides: armOverrides
           };
         }
         return p;
@@ -160,9 +198,8 @@ export default function Home() {
          localStorage.setItem("wb_saved_fleet", JSON.stringify(updatedFleet));
       }
     }
-  }, [customEmptyWeight, customEmptyArm, armOverrides, selectedPlane, savedPlanes]); // Added armOverrides dependency
+  }, [customEmptyWeight, customEmptyArm, armOverrides, selectedPlane, savedPlanes]);
 
-  // Sync state when going back to list
   const handleBackToList = () => {
     const loadedFleet = localStorage.getItem("wb_saved_fleet");
     if (loadedFleet) setSavedPlanes(JSON.parse(loadedFleet));
@@ -269,7 +306,14 @@ export default function Home() {
                 <div className="flex justify-between items-end mb-4">
                   <h2 className="text-xl font-bold text-gray-800">My Hangar</h2>
                   <button 
-                    onClick={() => setView('create')}
+                    onClick={() => {
+                        setNewPlaneTemplate(null);
+                        setNewPlaneReg("");
+                        setNewPlaneWeight("");
+                        setNewPlaneArm("");
+                        setEditingStationArms({});
+                        setView('create');
+                    }}
                     className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold shadow hover:bg-blue-700 transition"
                   >
                     + Add Aircraft
@@ -297,14 +341,30 @@ export default function Home() {
                         <h2 className="font-bold text-lg group-hover:text-blue-600">{plane.model}</h2>
                         <p className="text-gray-400 text-sm mt-1">BEW: {plane.emptyWeight} lbs</p>
                         
-                        {/* Delete Button */}
-                        <div 
-                          onClick={(e) => handleDeletePlane(e, plane.id)}
-                          className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-gray-300 hover:text-red-500"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                            <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
-                          </svg>
+                        {/* ACTIONS CONTAINER */}
+                        <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Edit Button */}
+                            <div 
+                              onClick={(e) => handleEditClick(e, plane)}
+                              className="p-2 text-gray-400 hover:text-blue-600 bg-gray-50 rounded-full hover:bg-blue-50"
+                              title="Edit Aircraft"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                  <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                                  <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+                                </svg>
+                            </div>
+
+                            {/* Delete Button */}
+                            <div 
+                              onClick={(e) => handleDeletePlane(e, plane.id)}
+                              className="p-2 text-gray-400 hover:text-red-600 bg-gray-50 rounded-full hover:bg-red-50"
+                              title="Delete Aircraft"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
+                              </svg>
+                            </div>
                         </div>
                       </button>
                     ))}
@@ -331,34 +391,47 @@ export default function Home() {
             </div>
           )}
 
-          {view === 'create' && (
+          {/* CREATE OR EDIT VIEW */}
+          {(view === 'create' || view === 'edit') && (
             <div className="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-              <h2 className="text-2xl font-bold mb-6">Add Aircraft to Fleet</h2>
+              <h2 className="text-2xl font-bold mb-6">
+                  {view === 'edit' ? 'Edit Aircraft Details' : 'Add Aircraft to Fleet'}
+              </h2>
               
               <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">1. Select Base Model</label>
-                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg">
-                    {aircraftList.map((plane) => (
-                      <button
-                        key={plane.id}
-                        onClick={() => {
-                          setNewPlaneTemplate(plane);
-                          setNewPlaneWeight(plane.emptyWeight.toString());
-                          setNewPlaneArm(plane.emptyArm.toString());
-                        }}
-                        className={`p-3 text-left rounded-lg text-sm border transition ${newPlaneTemplate?.id === plane.id ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'border-transparent hover:bg-gray-50'}`}
-                      >
-                        {plane.model}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {/* Only show template selection in CREATE mode */}
+                {view === 'create' && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">1. Select Base Model</label>
+                      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg">
+                        {aircraftList.map((plane) => (
+                          <button
+                            key={plane.id}
+                            onClick={() => {
+                              setNewPlaneTemplate(plane);
+                              setNewPlaneWeight(plane.emptyWeight.toString());
+                              setNewPlaneArm(plane.emptyArm.toString());
+                              
+                              // Initialize arms from factory defaults
+                              const defaultArms: Record<string, number> = {};
+                              plane.stations.forEach(s => defaultArms[s.id] = s.arm);
+                              setEditingStationArms(defaultArms);
+                            }}
+                            className={`p-3 text-left rounded-lg text-sm border transition ${newPlaneTemplate?.id === plane.id ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'border-transparent hover:bg-gray-50'}`}
+                          >
+                            {plane.model}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                )}
 
                 {newPlaneTemplate && (
                   <div className="space-y-4 animate-fade-in">
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">2. Registration (Tail Number)</label>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        {view === 'create' ? '2. Registration (Tail Number)' : 'Registration'}
+                      </label>
                       <input 
                         type="text" 
                         placeholder="C-GABC"
@@ -370,7 +443,9 @@ export default function Home() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">3. Empty Weight</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                            {view === 'create' ? '3. Empty Weight' : 'Empty Weight'}
+                        </label>
                         <input 
                           type="number" 
                           className="w-full p-3 border border-gray-300 rounded-lg"
@@ -379,7 +454,9 @@ export default function Home() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">4. Empty Arm</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                            {view === 'create' ? '4. Empty Arm' : 'Empty Arm'}
+                        </label>
                         <input 
                           type="number" 
                           className="w-full p-3 border border-gray-300 rounded-lg"
@@ -389,18 +466,49 @@ export default function Home() {
                       </div>
                     </div>
 
+                    {/* NEW: Station Arm Configuration Section */}
+                    <div className="border-t border-gray-100 pt-4 mt-4">
+                        <label className="block text-sm font-bold text-gray-700 mb-3">
+                            {view === 'create' ? '5. Station Arms (Optional)' : 'Station Arms'}
+                        </label>
+                        <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                            {newPlaneTemplate.stations.map((station) => (
+                                <div key={station.id} className="flex items-center justify-between">
+                                    <label className="text-sm text-gray-600 font-medium">{station.name}</label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-400">Arm:</span>
+                                        <input 
+                                            type="number" 
+                                            className="w-20 p-1.5 text-right border border-gray-300 rounded bg-white text-sm"
+                                            value={editingStationArms[station.id] ?? station.arm}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                setEditingStationArms(prev => ({
+                                                    ...prev,
+                                                    [station.id]: isNaN(val) ? 0 : val
+                                                }));
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                     <div className="flex gap-4 pt-4">
                       <button 
-                        onClick={handleCreatePlane}
+                        onClick={handleSavePlane}
                         disabled={!newPlaneReg}
                         className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                       >
-                        Save & Open
+                        {view === 'edit' ? 'Save Changes' : 'Save & Open'}
                       </button>
                       <button 
                         onClick={() => {
                            setView('list');
                            setNewPlaneTemplate(null);
+                           setEditingPlaneId(null);
+                           setEditingStationArms({});
                         }}
                         className="px-6 py-3 text-gray-500 font-bold hover:text-gray-800"
                       >
