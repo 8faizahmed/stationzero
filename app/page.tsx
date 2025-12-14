@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { aircraftList, Aircraft } from "../data/aircraft";
 import WBGraph from "../components/WBGraph";
 import StationRow from "../components/StationRow";
@@ -25,6 +25,7 @@ export default function Home() {
   
   // Navigation State
   const [view, setView] = useState<'list' | 'create' | 'edit' | 'calculator'>('list');
+  const [showSettings, setShowSettings] = useState(false); // NEW: Settings Modal
   
   // Data State
   const [savedPlanes, setSavedPlanes] = useState<SavedAircraft[]>([]);
@@ -36,8 +37,6 @@ export default function Home() {
   const [newPlaneWeight, setNewPlaneWeight] = useState("");
   const [newPlaneArm, setNewPlaneArm] = useState("");
   const [editingPlaneId, setEditingPlaneId] = useState<string | null>(null);
-  
-  // NEW: Track station arms while editing in the modal
   const [editingStationArms, setEditingStationArms] = useState<Record<string, number>>({});
 
   // Calculator State
@@ -62,6 +61,9 @@ export default function Home() {
   const [armOverrides, setArmOverrides] = useState<Record<string, number>>({});
   const [customStations, setCustomStations] = useState<CustomStation[]>([]);
 
+  // Refs for Import
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   // --- 1. INITIAL LOAD ---
   useEffect(() => {
@@ -75,13 +77,55 @@ export default function Home() {
     }
   }, []);
 
-  // --- 2. PLANE SELECTION ---
+  // --- 2. IMPORT / EXPORT HANDLERS ---
+  
+  const handleExportData = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedPlanes));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `wb_fleet_backup_${new Date().toISOString().slice(0,10)}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (Array.isArray(json)) {
+          // Basic validation could go here
+          setSavedPlanes(json);
+          localStorage.setItem("wb_saved_fleet", JSON.stringify(json));
+          alert("Fleet imported successfully!");
+          setShowSettings(false);
+        } else {
+          alert("Invalid file format.");
+        }
+      } catch (err) {
+        alert("Error parsing file.");
+      }
+    };
+    reader.readAsText(file);
+    // Reset input so same file can be selected again if needed
+    e.target.value = ""; 
+  };
+
+
+  // --- 3. PLANE SELECTION ---
   const handleSelectPlane = (plane: Aircraft | SavedAircraft) => {
     setSelectedPlane(plane);
     setCategory('normal');
     setWeights({});
     
-    // Load overrides if they exist
     if ('savedArmOverrides' in plane && plane.savedArmOverrides) {
       setArmOverrides(plane.savedArmOverrides);
     } else {
@@ -96,9 +140,7 @@ export default function Home() {
     setView('calculator');
   };
 
-  // --- 3. CREATE / UPDATE HANDLERS ---
-  
-  // Open the Edit Modal
+  // --- 4. CREATE / UPDATE HANDLERS ---
   const handleEditClick = (e: React.MouseEvent, plane: SavedAircraft) => {
     e.stopPropagation();
     setNewPlaneTemplate(plane); 
@@ -107,10 +149,8 @@ export default function Home() {
     setNewPlaneArm(plane.emptyArm.toString());
     setEditingPlaneId(plane.id);
     
-    // Initialize editing arms with saved overrides OR factory defaults
     const currentArms: Record<string, number> = {};
     plane.stations.forEach(s => {
-      // Use saved override if exists, otherwise use factory default
       currentArms[s.id] = plane.savedArmOverrides?.[s.id] ?? s.arm;
     });
     setEditingStationArms(currentArms);
@@ -118,7 +158,6 @@ export default function Home() {
     setView('edit');
   };
 
-  // Save (Create OR Update)
   const handleSavePlane = () => {
     if (!newPlaneTemplate || !newPlaneReg) return;
 
@@ -128,7 +167,6 @@ export default function Home() {
     let updatedFleet;
 
     if (view === 'edit' && editingPlaneId) {
-      // UPDATE EXISTING
       updatedFleet = savedPlanes.map(p => {
         if (p.id === editingPlaneId) {
           return {
@@ -136,13 +174,12 @@ export default function Home() {
             registration: newPlaneReg.toUpperCase(),
             emptyWeight: weight,
             emptyArm: arm,
-            savedArmOverrides: editingStationArms, // Save the edited arms
+            savedArmOverrides: editingStationArms,
           };
         }
         return p;
       });
     } else {
-      // CREATE NEW
       const newPlane: SavedAircraft = {
         ...newPlaneTemplate,
         id: `${newPlaneTemplate.id}-${Date.now()}`,
@@ -151,7 +188,7 @@ export default function Home() {
         emptyArm: arm,
         isCustomPlane: true,
         model: newPlaneTemplate.model,
-        savedArmOverrides: editingStationArms // Save the initial arms
+        savedArmOverrides: editingStationArms 
       };
       updatedFleet = [...savedPlanes, newPlane];
     }
@@ -159,7 +196,6 @@ export default function Home() {
     setSavedPlanes(updatedFleet);
     localStorage.setItem("wb_saved_fleet", JSON.stringify(updatedFleet));
     
-    // Reset & Close
     setNewPlaneTemplate(null);
     setNewPlaneReg("");
     setNewPlaneWeight("");
@@ -179,7 +215,7 @@ export default function Home() {
   };
 
 
-  // --- 4. AUTO-SAVE (Calculator Changes) ---
+  // --- 5. AUTO-SAVE ---
   useEffect(() => {
     if (selectedPlane && 'isCustomPlane' in selectedPlane) {
       const updatedFleet = savedPlanes.map(p => {
@@ -296,11 +332,24 @@ export default function Home() {
           
           <div className="mb-6 flex justify-between items-center">
             <h1 className="text-2xl font-bold text-blue-900">W&B Calculator</h1>
+            
+            {/* SETTINGS BUTTON (Only in List View) */}
+            {view === 'list' && (
+              <button 
+                onClick={() => setShowSettings(true)}
+                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-full transition"
+                title="Data Settings"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {view === 'list' && (
             <div className="space-y-8">
-              
               {/* SECTION 1: MY HANGAR */}
               <div>
                 <div className="flex justify-between items-end mb-4">
@@ -341,9 +390,7 @@ export default function Home() {
                         <h2 className="font-bold text-lg group-hover:text-blue-600">{plane.model}</h2>
                         <p className="text-gray-400 text-sm mt-1">BEW: {plane.emptyWeight} lbs</p>
                         
-                        {/* ACTIONS CONTAINER */}
                         <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {/* Edit Button */}
                             <div 
                               onClick={(e) => handleEditClick(e, plane)}
                               className="p-2 text-gray-400 hover:text-blue-600 bg-gray-50 rounded-full hover:bg-blue-50"
@@ -354,8 +401,6 @@ export default function Home() {
                                   <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
                                 </svg>
                             </div>
-
-                            {/* Delete Button */}
                             <div 
                               onClick={(e) => handleDeletePlane(e, plane.id)}
                               className="p-2 text-gray-400 hover:text-red-600 bg-gray-50 rounded-full hover:bg-red-50"
@@ -399,7 +444,6 @@ export default function Home() {
               </h2>
               
               <div className="space-y-6">
-                {/* Only show template selection in CREATE mode */}
                 {view === 'create' && (
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">1. Select Base Model</label>
@@ -411,8 +455,6 @@ export default function Home() {
                               setNewPlaneTemplate(plane);
                               setNewPlaneWeight(plane.emptyWeight.toString());
                               setNewPlaneArm(plane.emptyArm.toString());
-                              
-                              // Initialize arms from factory defaults
                               const defaultArms: Record<string, number> = {};
                               plane.stations.forEach(s => defaultArms[s.id] = s.arm);
                               setEditingStationArms(defaultArms);
@@ -466,7 +508,6 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* NEW: Station Arm Configuration Section */}
                     <div className="border-t border-gray-100 pt-4 mt-4">
                         <label className="block text-sm font-bold text-gray-700 mb-3">
                             {view === 'create' ? '5. Station Arms (Optional)' : 'Station Arms'}
@@ -523,8 +564,6 @@ export default function Home() {
 
           {view === 'calculator' && selectedPlane && (
             <div className="flex flex-col gap-6">
-              
-              {/* TOP NAV */}
               <div>
                 <button 
                   onClick={handleBackToList}
@@ -554,7 +593,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* CONTROL DECK */}
               <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-wrap gap-4 items-center">
                 <div className="flex flex-wrap items-center gap-3">
                    <button 
@@ -583,10 +621,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* MAIN GRID */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
-              
-                {/* LEFT COLUMN */}
                 <div className="md:col-span-5 space-y-4">
                   {showInfoCard && (
                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm animate-fade-in">
@@ -603,7 +638,6 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* Config Box (Only show Save badge if it's a saved plane) */}
                   <div className="bg-gray-50 rounded-xl border border-dashed border-gray-300 p-4">
                     <div className="flex justify-between items-center mb-3">
                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -635,7 +669,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Stations */}
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <div className="divide-y divide-gray-100">
                       {selectedPlane.stations.map((station) => {
@@ -719,7 +752,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Right Column: Graph */}
                 <div className="md:col-span-7 flex flex-col gap-4 sticky top-8">
                   <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 h-[450px] flex flex-col">
                     <div className="flex items-center justify-between mb-2">
@@ -782,25 +814,21 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-
               </div>
             </div>
           )}
         </div>
       </main>
 
-      {/* 2. REPORT VIEW (Only Visible when printing) */}
+      {/* 2. REPORT VIEW */}
       {selectedPlane && view === 'calculator' && (
         <ManifestReport 
           plane={selectedPlane}
-          // Pass registration to report if it exists
           date={new Date().toLocaleDateString()}
           pilotName={'registration' in selectedPlane ? selectedPlane.registration : undefined}
-          
           emptyWeight={customEmptyWeight}
           emptyArm={customEmptyArm}
           fuelArm={fuelArm}
-          
           stations={[
             ...selectedPlane.stations.map(station => {
               const weight = weights[station.id] || 0;
@@ -824,23 +852,69 @@ export default function Home() {
               moment: station.weight * station.arm
             }))
           ]}
-
           taxiFuelWeight={taxiWeight}
           tripFuelWeight={showFlightPlan ? (tripFuel * 6) : 0}
-
           rampWeight={rampWeight}
           rampMoment={rampMoment}
           takeoffWeight={takeoffWeight}
           takeoffMoment={takeoffMoment}
           landingWeight={landingWeight}
           landingMoment={landingWeight * landingCG} 
-          
           takeoffCG={takeoffCG}
           landingCG={landingCG}
-          
           isTakeoffSafe={isTakeoffSafe}
           isLandingSafe={isLandingSafe}
         />
+      )}
+
+      {/* 3. SETTINGS MODAL */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl animate-fade-in">
+            <h2 className="text-xl font-bold mb-2">Data Management</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Back up your fleet data to a file or restore from a previous backup.
+            </p>
+            
+            <div className="space-y-3">
+              <button 
+                onClick={handleExportData}
+                className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-700 py-3 rounded-lg font-bold border border-blue-200 hover:bg-blue-100 transition"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Export Fleet Data (JSON)
+              </button>
+
+              <div className="relative">
+                <input 
+                  type="file" 
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".json"
+                  className="hidden"
+                />
+                <button 
+                  onClick={handleImportClick}
+                  className="w-full flex items-center justify-center gap-2 bg-gray-50 text-gray-700 py-3 rounded-lg font-bold border border-gray-200 hover:bg-gray-100 transition"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                  Import Fleet Data
+                </button>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setShowSettings(false)}
+              className="mt-6 w-full text-center text-sm text-gray-400 hover:text-gray-600"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </>
   );
