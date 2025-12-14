@@ -250,7 +250,6 @@ export default function Home() {
   return (
     <div className={`min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300`}>
       
-      {/* --- FIX: ADD THIS BACK IN --- */}
       {/* This ensures the modal renders if terms haven't been accepted yet */}
       {!hasAcceptedTerms && (
         <LegalDisclaimerModal 
@@ -262,7 +261,7 @@ export default function Home() {
       )}
       {/* ----------------------------- */}
 
-      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-8 print:hidden"></main>
+      {/* <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-8 print:hidden"></main> */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-8 print:hidden">
         
         <div className="mb-6 flex justify-between items-center">
