@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { aircraftList, Aircraft } from "../data/aircraft";
 import ManifestReport from "../components/ManifestReport";
 import HangarList from "../components/HangarList";
 import SettingsModal from "../components/SettingsModal";
 import CalculatorView from "../components/CalculatorView";
+import AircraftForm from "../components/AircraftForm"; 
+import { isPointInPolygon, getCGLimitsAtWeight } from "../utils/calculations"; // Ensure this is imported
 
 // --- TYPES ---
 export interface CustomStation {
@@ -30,7 +32,8 @@ export default function Home() {
   // Data
   const [savedPlanes, setSavedPlanes] = useState<SavedAircraft[]>([]);
   const [selectedPlane, setSelectedPlane] = useState<Aircraft | SavedAircraft | null>(null);
-  
+  const [planeToEdit, setPlaneToEdit] = useState<Aircraft | SavedAircraft | null>(null); 
+
   // Calculator State
   const [weights, setWeights] = useState<Record<string, number>>({});
   const [category, setCategory] = useState<'normal' | 'utility'>('normal');
@@ -38,8 +41,9 @@ export default function Home() {
   const [toggles, setToggles] = useState({ moments: false, info: false, flightPlan: false });
   const [armOverrides, setArmOverrides] = useState<Record<string, number>>({});
   const [customStations, setCustomStations] = useState<CustomStation[]>([]);
+  const [useGallons, setUseGallons] = useState(true); // <--- LIFTED STATE
 
-  // Config State (for Report)
+  // Config State
   const [customEmptyWeight, setCustomEmptyWeight] = useState(0);
   const [customEmptyArm, setCustomEmptyArm] = useState(0);
 
@@ -68,7 +72,42 @@ export default function Home() {
     }
   };
 
-  // --- HANDLERS ---
+  // --- EXPORT / IMPORT HANDLERS ---
+  const handleExportData = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedPlanes));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `wb_fleet_backup_${new Date().toISOString().slice(0,10)}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (Array.isArray(json)) {
+          setSavedPlanes(json);
+          localStorage.setItem("wb_saved_fleet", JSON.stringify(json));
+          alert("Fleet imported successfully!");
+          setShowSettings(false);
+        } else {
+          alert("Invalid file format.");
+        }
+      } catch (err) {
+        alert("Error parsing file.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ""; 
+  };
+
+  // --- NAVIGATION HANDLERS ---
   const handleSelectPlane = (plane: Aircraft | SavedAircraft) => {
     setSelectedPlane(plane);
     setCategory('normal');
@@ -89,17 +128,24 @@ export default function Home() {
 
   const handleSavePlane = (newPlane: SavedAircraft) => {
     let updatedFleet;
-    const exists = savedPlanes.find(p => p.id === newPlane.id);
+    const existingIndex = savedPlanes.findIndex(p => p.id === newPlane.id);
     
-    if (exists) {
-        updatedFleet = savedPlanes.map(p => p.id === newPlane.id ? newPlane : p);
+    if (existingIndex >= 0) {
+        updatedFleet = [...savedPlanes];
+        updatedFleet[existingIndex] = newPlane;
     } else {
         updatedFleet = [...savedPlanes, newPlane];
     }
     
     setSavedPlanes(updatedFleet);
     localStorage.setItem("wb_saved_fleet", JSON.stringify(updatedFleet));
-    setView('list');
+    
+    if (view === 'create') {
+        handleSelectPlane(newPlane);
+    } else {
+        setView('list');
+    }
+    setPlaneToEdit(null);
   };
 
   const handleDeletePlane = (e: React.MouseEvent, id: string) => {
@@ -113,7 +159,7 @@ export default function Home() {
 
   // Auto-Save Overrides
   useEffect(() => {
-    if (selectedPlane && 'isCustomPlane' in selectedPlane) {
+    if (view === 'calculator' && selectedPlane && 'isCustomPlane' in selectedPlane) {
       const updatedFleet = savedPlanes.map(p => {
         if (p.id === selectedPlane.id) {
           return { 
@@ -129,13 +175,93 @@ export default function Home() {
          localStorage.setItem("wb_saved_fleet", JSON.stringify(updatedFleet));
       }
     }
-  }, [customEmptyWeight, customEmptyArm, armOverrides, selectedPlane, savedPlanes]);
+  }, [customEmptyWeight, customEmptyArm, armOverrides, selectedPlane, savedPlanes, view]);
 
-  // --- CALCULATOR MATH FOR REPORT (Duplicate logic needed for report prop passing) ---
-  let fuelArm = 0;
-  if(selectedPlane) {
-      const fuelStation = selectedPlane.stations.find(s => s.id.toLowerCase().includes("fuel"));
-      if(fuelStation) fuelArm = armOverrides[fuelStation.id] ?? fuelStation.arm;
+  // --- CORE CALCULATION LOGIC (HOISTED UP) ---
+  let results = {
+    rampWeight: 0, takeoffWeight: 0, takeoffMoment: 0, takeoffCG: 0,
+    landingWeight: 0, landingCG: 0,
+    isTakeoffSafe: true, isLandingSafe: true,
+    takeoffIssue: null as string | null, landingIssue: null as string | null,
+    isGo: true, enduranceHours: 0, enduranceMinutes: 0,
+    activeEnvelope: [] as any[], maxGross: 0,
+    fuelArm: 0
+  };
+
+  if (selectedPlane) {
+    let rampWeight = customEmptyWeight;
+    let rampMoment = customEmptyWeight * customEmptyArm;
+    let fuelArm = 0;
+    let totalFuelWeight = 0;
+
+    selectedPlane.stations.forEach((station: any) => {
+      let w = weights[station.id] || 0;
+      const isFuel = station.id.toLowerCase().includes("fuel");
+      if (isFuel) {
+        if (useGallons) w = w * 6;
+        totalFuelWeight = w;
+        fuelArm = armOverrides[station.id] !== undefined ? armOverrides[station.id] : station.arm;
+      }
+      const arm = armOverrides[station.id] !== undefined ? armOverrides[station.id] : station.arm;
+      rampWeight += w;
+      rampMoment += w * arm;
+    });
+
+    customStations.forEach((s) => {
+      rampWeight += s.weight;
+      rampMoment += s.weight * s.arm;
+    });
+
+    const taxiWeight = fuel.taxi * 6;
+    const takeoffWeight = rampWeight - taxiWeight;
+    const takeoffMoment = rampMoment - (taxiWeight * fuelArm);
+    const takeoffCG = takeoffMoment / (takeoffWeight || 1);
+
+    let landingWeight = takeoffWeight;
+    let landingCG = takeoffCG;
+
+    if (fuel.trip > 0) {
+      const tripWeight = fuel.trip * 6;
+      landingWeight = takeoffWeight - tripWeight;
+      const landingMoment = takeoffMoment - (tripWeight * fuelArm);
+      landingCG = landingMoment / (landingWeight || 1);
+    }
+
+    const usableTakeoffFuelGal = (totalFuelWeight - taxiWeight) / 6;
+    let enduranceHours = 0;
+    let enduranceMinutes = 0;
+    if (fuel.burn > 0 && usableTakeoffFuelGal > 0) {
+        const totalHours = usableTakeoffFuelGal / fuel.burn;
+        enduranceHours = Math.floor(totalHours);
+        enduranceMinutes = Math.floor((totalHours - enduranceHours) * 60);
+    }
+
+    const activeEnvelope = (category === 'utility' && selectedPlane.utilityEnvelope) ? selectedPlane.utilityEnvelope : selectedPlane.envelope;
+    const maxGross = Math.max(...activeEnvelope.map((p: any) => p.weight));
+    const isTakeoffInside = isPointInPolygon({ cg: takeoffCG, weight: takeoffWeight }, activeEnvelope);
+    const isLandingInside = isPointInPolygon({ cg: landingCG, weight: landingWeight }, activeEnvelope);
+    
+    const takeoffLimits = getCGLimitsAtWeight(takeoffWeight, activeEnvelope);
+    const landingLimits = getCGLimitsAtWeight(landingWeight, activeEnvelope);
+
+    const getFailureReason = (weight: number, cg: number, limits: {minCG: number, maxCG: number} | null) => {
+      if (weight > maxGross) return `Over Max Gross (${(weight - maxGross).toFixed(0)} lbs)`;
+      if (!limits) return "Outside Envelope";
+      if (cg < limits.minCG) return `Fwd Limit Exceeded by ${(limits.minCG - cg).toFixed(1)}"`;
+      if (cg > limits.maxCG) return `Aft Limit Exceeded by ${(cg - limits.maxCG).toFixed(1)}"`;
+      return "Outside Envelope";
+    };
+
+    results = {
+      rampWeight, takeoffWeight, takeoffMoment, takeoffCG,
+      landingWeight, landingCG,
+      isTakeoffSafe: isTakeoffInside, isLandingSafe: isLandingInside,
+      takeoffIssue: !isTakeoffInside ? getFailureReason(takeoffWeight, takeoffCG, takeoffLimits) : null,
+      landingIssue: !isLandingInside ? getFailureReason(landingWeight, landingCG, landingLimits) : null,
+      isGo: isTakeoffInside && (toggles.flightPlan ? isLandingInside : true),
+      enduranceHours, enduranceMinutes,
+      activeEnvelope, maxGross, fuelArm
+    };
   }
 
   // --- RENDER ---
@@ -162,19 +288,42 @@ export default function Home() {
             <HangarList 
               savedPlanes={savedPlanes} 
               templates={aircraftList} 
+              
+              // 1. Click Card Body -> Open Calculator (Quick Mode)
               onSelect={handleSelectPlane}
-              onAdd={() => setView('create')}
-              onEdit={(e, plane) => { e.stopPropagation(); handleSelectPlane(plane); setView('edit'); }}
+              
+              // 2. Click "+" Icon -> Open Create Form for that specific plane
+              onAddToFleet={(template) => {
+                  setPlaneToEdit(template);
+                  setView('create');
+              }}
+              
+              // 3. Click top "+ Add Aircraft" -> Defaults to first plane (C172S) and opens form
+              onAdd={() => {
+                  setPlaneToEdit(aircraftList[0]);
+                  setView('create');
+              }}
+              
+              onEdit={(e, plane) => { 
+                  e.stopPropagation(); 
+                  setPlaneToEdit(plane); 
+                  setView('edit'); 
+              }}
+              
               onDelete={handleDeletePlane}
             />
           )}
 
-          {(view === 'create' || view === 'edit') && (
-             <div className="p-8 text-center bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">
-                <p>This part should use a dedicated AircraftForm component.</p>
-                <p className="text-sm text-gray-500 mt-2">To keep things simple during refactor, please refresh the page to reset, then create a separate component for the form if you wish to edit.</p>
-                <button onClick={() => setView('list')} className="mt-4 text-blue-500">Back to List</button>
-             </div>
+          {(view === 'create' || view === 'edit') && planeToEdit && (
+             <AircraftForm 
+                template={planeToEdit}
+                isEditMode={view === 'edit'}
+                onSave={handleSavePlane}
+                onCancel={() => {
+                    setView('list');
+                    setPlaneToEdit(null);
+                }}
+             />
           )}
 
           {view === 'calculator' && selectedPlane && (
@@ -187,11 +336,20 @@ export default function Home() {
                 toggles={toggles}
                 category={category}
                 isDark={isDarkMode}
+                useGallons={useGallons} // <--- PASSED PROP
+                results={results} // <--- PASSED CALCULATED RESULTS
+                
+                customEmptyWeight={customEmptyWeight}
+                customEmptyArm={customEmptyArm}
+                setCustomEmptyWeight={setCustomEmptyWeight}
+                setCustomEmptyArm={setCustomEmptyArm}
+                
                 setWeights={setWeights}
                 setArmOverrides={setArmOverrides}
                 setCategory={setCategory}
                 setFuel={setFuel}
                 setToggles={setToggles}
+                setUseGallons={setUseGallons} // <--- PASSED SETTER
                 onUpdateCustom={(id, f, v) => setCustomStations(customStations.map(s => s.id === id ? { ...s, [f]: v } : s))}
                 onDeleteCustom={(id) => setCustomStations(customStations.filter(s => s.id !== id))}
                 onAddCustom={() => setCustomStations([...customStations, { id: `c-${Date.now()}`, name: "Item", weight: 0, arm: 0 }])}
@@ -201,7 +359,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* REPORT (ALWAYS RENDERED BUT HIDDEN VIA CSS TO FIX PRINTING) */}
+      {/* REPORT (NOW RECEIVES CORRECT NUMBERS) */}
       {selectedPlane && (
         <div className="hidden print:block">
             <ManifestReport 
@@ -210,27 +368,33 @@ export default function Home() {
                 pilotName={'registration' in selectedPlane ? selectedPlane.registration : undefined}
                 emptyWeight={customEmptyWeight}
                 emptyArm={customEmptyArm}
-                fuelArm={fuelArm}
+                fuelArm={results.fuelArm}
                 stations={selectedPlane.stations.map(s => ({
                     id: s.id, name: s.name, weight: weights[s.id]||0, arm: armOverrides[s.id]??s.arm, moment: (weights[s.id]||0)*(armOverrides[s.id]??s.arm)
                 }))}
                 taxiFuelWeight={fuel.taxi*6}
                 tripFuelWeight={fuel.trip*6}
-                rampWeight={0} 
-                rampMoment={0}
-                takeoffWeight={0}
-                takeoffMoment={0}
-                landingWeight={0}
-                landingMoment={0}
-                takeoffCG={0} 
-                landingCG={0} 
-                isTakeoffSafe={true} 
-                isLandingSafe={true}
+                rampWeight={results.rampWeight} 
+                rampMoment={0} // We calculated total moment for graph, but report might re-calc per station. Passing rampWeight is key.
+                takeoffWeight={results.takeoffWeight}
+                takeoffMoment={results.takeoffMoment}
+                landingWeight={results.landingWeight}
+                landingMoment={results.landingWeight * results.landingCG}
+                takeoffCG={results.takeoffCG} 
+                landingCG={results.landingCG} 
+                isTakeoffSafe={results.isTakeoffSafe} 
+                isLandingSafe={results.isLandingSafe}
             />
         </div>
       )}
 
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} onImport={() => {}} onExport={() => {}} />}
+      {showSettings && (
+        <SettingsModal 
+            onClose={() => setShowSettings(false)} 
+            onImport={handleFileChange} 
+            onExport={handleExportData} 
+        />
+      )}
     </>
   );
 }

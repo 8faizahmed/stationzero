@@ -1,9 +1,11 @@
+"use client";
+
 import StationRow from "./StationRow";
 import WBGraph from "./WBGraph";
-import { isPointInPolygon, getCGLimitsAtWeight } from "../utils/calculations";
 
 interface CalculatorProps {
   plane: any;
+  // DATA PROPS (Received from parent)
   weights: any;
   armOverrides: any;
   customStations: any[];
@@ -11,97 +13,59 @@ interface CalculatorProps {
   toggles: { moments: boolean; info: boolean; flightPlan: boolean };
   category: 'normal' | 'utility';
   isDark: boolean;
-  // Setters
+  useGallons: boolean; // <--- NEW PROP
+  
+  // CALCULATED RESULTS (Received from parent)
+  results: {
+    rampWeight: number;
+    takeoffWeight: number;
+    takeoffMoment: number;
+    takeoffCG: number;
+    landingWeight: number;
+    landingCG: number;
+    isTakeoffSafe: boolean;
+    isLandingSafe: boolean;
+    takeoffIssue: string | null;
+    landingIssue: string | null;
+    isGo: boolean;
+    enduranceHours: number;
+    enduranceMinutes: number;
+    activeEnvelope: any[];
+    maxGross: number;
+  };
+
+  // CONFIG PROPS
+  customEmptyWeight: number;
+  customEmptyArm: number;
+  setCustomEmptyWeight: (val: number) => void;
+  setCustomEmptyArm: (val: number) => void;
+
+  // ACTIONS
   setWeights: (w: any) => void;
   setArmOverrides: (a: any) => void;
   setCategory: (c: 'normal' | 'utility') => void;
   setFuel: (f: any) => void;
   setToggles: (t: any) => void;
-  // Custom station actions
+  setUseGallons: (val: boolean) => void; // <--- NEW PROP
   onUpdateCustom: (id: string, field: string, val: any) => void;
   onDeleteCustom: (id: string) => void;
   onAddCustom: () => void;
-  // Nav
   onBack: () => void;
 }
 
 export default function CalculatorView({
-  plane, weights, armOverrides, customStations, fuel, toggles, category, isDark,
-  setWeights, setArmOverrides, setCategory, setFuel, setToggles,
+  plane, weights, armOverrides, customStations, fuel, toggles, category, isDark, useGallons, results,
+  customEmptyWeight, customEmptyArm, setCustomEmptyWeight, setCustomEmptyArm,
+  setWeights, setArmOverrides, setCategory, setFuel, setToggles, setUseGallons,
   onUpdateCustom, onDeleteCustom, onAddCustom, onBack
 }: CalculatorProps) {
 
-  // --- CALCULATION LOGIC ---
-  const useGallons = true;
-  let rampWeight = plane.emptyWeight;
-  let rampMoment = plane.emptyWeight * plane.emptyArm;
-  let fuelArm = 0;
-  let totalFuelWeight = 0;
-
-  plane.stations.forEach((station: any) => {
-    let w = weights[station.id] || 0;
-    const isFuel = station.id.toLowerCase().includes("fuel");
-    if (isFuel) {
-      if (useGallons) w = w * 6;
-      totalFuelWeight = w;
-      fuelArm = armOverrides[station.id] !== undefined ? armOverrides[station.id] : station.arm;
-    }
-    const arm = armOverrides[station.id] !== undefined ? armOverrides[station.id] : station.arm;
-    rampWeight += w;
-    rampMoment += w * arm;
-  });
-
-  customStations.forEach((s) => {
-    rampWeight += s.weight;
-    rampMoment += s.weight * s.arm;
-  });
-
-  const taxiWeight = fuel.taxi * 6;
-  const takeoffWeight = rampWeight - taxiWeight;
-  const takeoffMoment = rampMoment - (taxiWeight * fuelArm);
-  const takeoffCG = takeoffMoment / (takeoffWeight || 1);
-
-  let landingWeight = takeoffWeight;
-  let landingCG = takeoffCG;
-
-  if (fuel.trip > 0) {
-    const tripWeight = fuel.trip * 6;
-    landingWeight = takeoffWeight - tripWeight;
-    const landingMoment = takeoffMoment - (tripWeight * fuelArm);
-    landingCG = landingMoment / (landingWeight || 1);
-  }
-
-  // Endurance
-  const usableTakeoffFuelGal = (totalFuelWeight - taxiWeight) / 6;
-  let enduranceHours = 0;
-  let enduranceMinutes = 0;
-  if (fuel.burn > 0 && usableTakeoffFuelGal > 0) {
-    const totalHours = usableTakeoffFuelGal / fuel.burn;
-    enduranceHours = Math.floor(totalHours);
-    enduranceMinutes = Math.floor((totalHours - enduranceHours) * 60);
-  }
-
-  // Safety
-  const activeEnvelope = (category === 'utility' && plane.utilityEnvelope) ? plane.utilityEnvelope : plane.envelope;
-  const maxGross = Math.max(...activeEnvelope.map((p: any) => p.weight));
-  
-  const isTakeoffInside = isPointInPolygon({ cg: takeoffCG, weight: takeoffWeight }, activeEnvelope);
-  const isLandingInside = isPointInPolygon({ cg: landingCG, weight: landingWeight }, activeEnvelope);
-  
-  const takeoffLimits = getCGLimitsAtWeight(takeoffWeight, activeEnvelope);
-  const landingLimits = getCGLimitsAtWeight(landingWeight, activeEnvelope);
-
-  const getFailureReason = (weight: number, cg: number, limits: {minCG: number, maxCG: number} | null) => {
-    if (weight > maxGross) return `Over Max Gross (${(weight - maxGross).toFixed(0)} lbs)`;
-    if (!limits) return "Outside Envelope";
-    if (cg < limits.minCG) return `Fwd Limit Exceeded by ${(limits.minCG - cg).toFixed(1)}"`;
-    if (cg > limits.maxCG) return `Aft Limit Exceeded by ${(cg - limits.maxCG).toFixed(1)}"`;
-    return "Outside Envelope";
-  };
-
-  const takeoffIssue = !isTakeoffInside ? getFailureReason(takeoffWeight, takeoffCG, takeoffLimits) : null;
-  const landingIssue = !isLandingInside ? getFailureReason(landingWeight, landingCG, landingLimits) : null;
-  const isGo = isTakeoffInside && (toggles.flightPlan ? isLandingInside : true);
+  // Destructure results for easier reading
+  const { 
+    takeoffWeight, takeoffCG, landingWeight, landingCG, 
+    isTakeoffSafe, isLandingSafe, takeoffIssue, landingIssue, isGo,
+    enduranceHours, enduranceMinutes, activeEnvelope, maxGross 
+  } = results;
 
   return (
     <div className="flex flex-col gap-6">
@@ -152,6 +116,38 @@ export default function CalculatorView({
             </div>
           )}
 
+          {/* CONFIG CARD */}
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-4">
+            <div className="flex justify-between items-center mb-3">
+               <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {'isCustomPlane' in plane ? `Config for ${plane.registration}` : 'Generic Config'}
+               </h3>
+               {'isCustomPlane' in plane && (
+                 <span className="text-[9px] text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full border border-green-100 dark:border-green-800">Auto-Saving</span>
+               )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Basic Empty Weight</label>
+                <input 
+                  type="number" 
+                  value={customEmptyWeight || ""}
+                  onChange={(e) => setCustomEmptyWeight(parseFloat(e.target.value) || 0)}
+                  className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-semibold text-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Empty CG (Arm)</label>
+                <input 
+                  type="number" 
+                  value={customEmptyArm || ""}
+                  onChange={(e) => setCustomEmptyArm(parseFloat(e.target.value) || 0)}
+                  className="w-full p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-semibold text-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* STATION ROWS */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -162,9 +158,12 @@ export default function CalculatorView({
                     <StationRow 
                       id={station.id} name={station.name} weight={weights[station.id] || 0}
                       arm={armOverrides[station.id] !== undefined ? armOverrides[station.id] : station.arm}
-                      isFuel={isFuel} useGallons={true} showMoments={toggles.moments}
+                      isFuel={isFuel} 
+                      useGallons={useGallons} 
+                      showMoments={toggles.moments}
                       onWeightChange={(val) => setWeights({...weights, [station.id]: parseFloat(val) || 0})}
                       onArmChange={(val) => { const v = parseFloat(val); if(!isNaN(v)) setArmOverrides({...armOverrides, [station.id]: v}); }}
+                      onToggleUnit={() => setUseGallons(!useGallons)} 
                     />
                     {isFuel && toggles.flightPlan && (
                       <div className="bg-blue-50/50 dark:bg-blue-900/20 border-t border-b border-blue-100 dark:border-blue-900 px-4 py-3 grid grid-cols-2 gap-4 animate-fade-in">
@@ -194,7 +193,7 @@ export default function CalculatorView({
                             </div>
                             <div className="bg-blue-600 dark:bg-blue-700 rounded-lg p-2 text-white text-center flex flex-col justify-center h-[54px]">
                                 <span className="text-[10px] uppercase font-bold opacity-80">Endurance</span>
-                                {fuel.burn > 0 && usableTakeoffFuelGal > 0 ? (
+                                {fuel.burn > 0 && results.activeEnvelope ? (
                                     <span className="text-xl font-bold leading-none">{enduranceHours}h <span className="text-sm font-normal opacity-80">{enduranceMinutes}m</span></span>
                                 ) : <span className="text-sm opacity-60">-- h -- m</span>}
                             </div>
@@ -248,14 +247,10 @@ export default function CalculatorView({
                  <div className="text-xl font-bold">{category === 'normal' ? 'Normal' : 'Utility'}</div>
               </div>
             </div>
-            
-            {/* CONDITIONAL GRID: 2 Cols if flight plan, 1 Col if just takeoff */}
             <div className={`grid ${toggles.flightPlan ? 'grid-cols-2' : 'grid-cols-1'} gap-x-8 gap-y-6`}>
-              
-              {/* TAKEOFF (Always Visible) */}
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-2 h-2 rounded-full ${isTakeoffInside ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${isTakeoffSafe ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`}></div>
                   <span className="text-xs font-bold uppercase opacity-80">Takeoff</span>
                 </div>
                 <div className="space-y-1">
@@ -264,12 +259,10 @@ export default function CalculatorView({
                 </div>
                 {takeoffIssue && <div className="mt-2 text-[10px] font-bold bg-black/20 p-2 rounded text-red-200 border border-red-400/30">{takeoffIssue}</div>}
               </div>
-
-              {/* LANDING (Conditionally Rendered) */}
               {toggles.flightPlan && (
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <div className={`w-2 h-2 rounded-full ${isLandingInside ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${isLandingSafe ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`}></div>
                     <span className="text-xs font-bold uppercase opacity-80">Landing</span>
                   </div>
                   {fuel.trip > 0 ? (

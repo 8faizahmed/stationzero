@@ -80,7 +80,7 @@ export default function StationRow({
               onClick={onToggleUnit}
               className="text-[10px] font-bold px-2 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/50 transition"
             >
-              {useGallons ? "LBS" : "GALS"}
+              {useGallons ? "Switch to LBS" : "Switch to GALS"}
             </button>
           )}
         </div>
