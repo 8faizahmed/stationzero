@@ -7,6 +7,7 @@ import HangarList from "../components/HangarList";
 import SettingsModal from "../components/SettingsModal";
 import CalculatorView from "../components/CalculatorView";
 import AircraftForm from "../components/AircraftForm"; 
+import LegalDisclaimerModal from "../components/LegalDisclaimerModal";
 import { isPointInPolygon, getCGLimitsAtWeight } from "../utils/calculations";
 
 export interface CustomStation {
@@ -248,6 +249,20 @@ export default function Home() {
 
   return (
     <div className={`min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300`}>
+      
+      {/* --- FIX: ADD THIS BACK IN --- */}
+      {/* This ensures the modal renders if terms haven't been accepted yet */}
+      {!hasAcceptedTerms && (
+        <LegalDisclaimerModal 
+          onAccept={() => {
+            localStorage.setItem("wb_legal_accepted", "true");
+            setHasAcceptedTerms(true);
+          }} 
+        />
+      )}
+      {/* ----------------------------- */}
+
+      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-8 print:hidden"></main>
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-8 print:hidden">
         
         <div className="mb-6 flex justify-between items-center">
