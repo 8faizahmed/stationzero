@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isMobile = process.env.IS_MOBILE === 'true';
+
 const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
   cacheOnFrontEndNav: true,
@@ -13,9 +15,9 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 });
 
 const nextConfig: NextConfig = {
-  output: 'export',
+  output: isMobile ? 'export' : undefined,
   images: {
-    unoptimized: true,
+    unoptimized: isMobile ? true : undefined,
   },
 };
 
