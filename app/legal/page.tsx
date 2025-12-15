@@ -29,7 +29,7 @@ export default function LegalPage() {
                 THIS APPLICATION IS FOR EDUCATIONAL AND SITUATIONAL AWARENESS PURPOSES ONLY.
               </p>
               <p className="mt-2">
-                It does <strong>NOT</strong> replace the official Pilot's Operating Handbook (POH), Flight Manual, or the specific Weight & Balance data sheet for the aircraft being flown. Data used in this application (including empty weights, arms, and envelopes) may differ from the actual aircraft configuration.
+                It does <strong>NOT</strong> replace the official Pilot&apos;s Operating Handbook (POH), Flight Manual, or the specific Weight & Balance data sheet for the aircraft being flown. Data used in this application (including empty weights, arms, and envelopes) may differ from the actual aircraft configuration.
               </p>
             </div>
           </section>
@@ -42,9 +42,9 @@ export default function LegalPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2 uppercase tracking-wide">3. No Warranty ("As-Is")</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2 uppercase tracking-wide">3. No Warranty (&quot;As-Is&quot;)</h2>
             <p>
-              THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+              THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             </p>
           </section>
 
