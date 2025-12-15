@@ -5,10 +5,15 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
+    "build:mobile": "cross-env IS_MOBILE=true next build --webpack",
     "start": "next start --webpack",
     "lint": "eslint"
   },
   "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@vercel/analytics": "^1.6.1",
     "next": "16.0.10",
@@ -22,6 +27,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.19",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "postcss": "^8.4.31",
