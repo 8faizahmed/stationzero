@@ -388,6 +388,11 @@ export default function CalculatorView({
                     </>
                 )}
             </div>
+
+            {/* Legal Disclaimer */}
+            <div className="mt-4 pt-3 border-t border-white/10 text-[10px] leading-snug opacity-60">
+              <span className="font-bold">DISCLAIMER:</span> For supplemental situational awareness only. Not a substitute for the official POH/AFM. The Pilot in Command is solely responsible for ensuring the aircraft is within weight and balance limitations.
+            </div>
           </div>
 
           {/* GRAPH CARD */}
