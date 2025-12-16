@@ -52,8 +52,8 @@ export default function StationRow({
       {isCustom && onDelete && (
         <button 
           onClick={onDelete}
-          className="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-          aria-label="Remove item"
+          className="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+          aria-label={`Remove ${name || 'item'}`}
         >
           ×
         </button>
@@ -69,6 +69,7 @@ export default function StationRow({
              value={name}
              onChange={(e) => onNameChange(e.target.value)}
              className="text-sm font-medium text-gray-700 dark:text-gray-200 bg-transparent border-b border-transparent hover:border-orange-200 focus:border-orange-500 focus:outline-none w-full mb-1 transition-colors"
+             aria-label="Item Name"
            />
           ) : (
             <label htmlFor={id} className="text-sm font-medium text-gray-700 dark:text-gray-200">{name}</label>
@@ -88,12 +89,13 @@ export default function StationRow({
         {/* Metadata Area (Arm & Moment) */}
         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 dark:text-gray-500 mt-1">
           <div className="flex items-center gap-1">
-            <span>Arm:</span>
+            <span id={`arm-label-${id}`}>Arm:</span>
             <input 
               type="number" 
               value={arm}
               onChange={(e) => onArmChange(e.target.value)}
               className={`w-10 bg-transparent border-b border-gray-300 dark:border-gray-600 text-center text-gray-600 dark:text-gray-400 focus:outline-none focus:bg-white dark:focus:bg-gray-800 transition-colors ${isCustom ? 'focus:border-orange-500' : 'focus:border-blue-500'}`}
+              aria-label={`Arm for ${name}`}
             />
           </div>
           {/* Moment Display */}
@@ -118,6 +120,7 @@ export default function StationRow({
             ${isCustom ? 'focus:ring-orange-500' : 'focus:ring-blue-500'}`}
           value={weight || ""}
           onChange={(e) => onWeightChange(e.target.value)}
+          aria-label={isCustom ? `Weight for ${name}` : undefined}
         />
         <span className="text-xs text-gray-400 font-medium w-6">
           {isFuel && useGallons ? "Gals" : "Lbs"}
