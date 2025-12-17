@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import StationRow from "./StationRow";
 import WBGraph from "./WBGraph";
 
@@ -88,26 +88,62 @@ export default function CalculatorView({
 
   // --- HANDLERS ---
 
-  // 1. Toggle Handler
-  const handleToggleUnit = (stationId: string, currentVal: number) => {
-    let newVal = currentVal;
-    
-    if (useGallons) {
-       // Switching Gals -> Lbs
-       newVal = currentVal * FUEL_DENSITY;
-    } else {
-       // Switching Lbs -> Gals
-       newVal = currentVal / FUEL_DENSITY;
-    }
-    
-    setWeights({ ...weights, [stationId]: newVal });
-    setUseGallons(!useGallons);
-  };
+  // 1. Toggle Handler - Memoized
+  const handleToggleUnit = useCallback((stationId: string) => {
+    // Determine the conversion factor based on standard AvGas weight
+    const FUEL_DENSITY = 6;
 
-  // 2. Input Handlers
-  const handleInput = (id: string, val: number) => {
-    setWeights({...weights, [id]: val});
-  };
+    setUseGallons(prevUseGallons => {
+        const nextUseGallons = !prevUseGallons;
+
+        setWeights((prevWeights: Record<string, number>) => {
+            const currentVal = prevWeights[stationId] || 0;
+            let newVal = currentVal;
+
+            if (prevUseGallons) {
+                // Switching Gals -> Lbs
+                newVal = currentVal * FUEL_DENSITY;
+            } else {
+                // Switching Lbs -> Gals
+                newVal = currentVal / FUEL_DENSITY;
+            }
+            return { ...prevWeights, [stationId]: newVal };
+        });
+
+        return nextUseGallons;
+    });
+  }, [setUseGallons, setWeights]);
+
+  // 2. Input Handlers - Memoized
+  // Standard stations weight change
+  const handleWeightChange = useCallback((id: string, val: string) => {
+    const numVal = parseFloat(val) || 0;
+    setWeights((prev: Record<string, number>) => ({...prev, [id]: numVal}));
+  }, [setWeights]);
+
+  // Standard stations arm change
+  const handleArmChange = useCallback((id: string, val: string) => {
+    const numVal = parseFloat(val);
+    if (!isNaN(numVal)) {
+        setArmOverrides((prev: Record<string, number>) => ({...prev, [id]: numVal}));
+    }
+  }, [setArmOverrides]);
+
+  // --- Custom Station Handlers - Wrappers for stable references ---
+  const handleCustomWeightChange = useCallback((id: string, val: string) => {
+    onUpdateCustom(id, 'weight', parseFloat(val)||0);
+  }, [onUpdateCustom]);
+
+  const handleCustomArmChange = useCallback((id: string, val: string) => {
+    onUpdateCustom(id, 'arm', parseFloat(val)||0);
+  }, [onUpdateCustom]);
+
+  const handleCustomNameChange = useCallback((id: string, val: string) => {
+    onUpdateCustom(id, 'name', val);
+  }, [onUpdateCustom]);
+
+  // Note: onDeleteCustom is already (id: string) => void, so we can pass it directly if we didn't change StationRow interface.
+  // But we changed StationRow to expect onDelete as (id: string) => void and we pass it there.
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
@@ -158,7 +194,7 @@ export default function CalculatorView({
               <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200">
                 <span>⚙️ Aircraft Configuration</span>
                 <span className="font-normal text-gray-400 text-xs ml-2 hidden sm:inline-block">
-                    BEW: {customEmptyWeight} lbs • Arm: {customEmptyArm}"
+                    BEW: {customEmptyWeight} lbs • Arm: {customEmptyArm}&quot;
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -236,11 +272,11 @@ export default function CalculatorView({
                       showMoments={toggles.moments}
                       
                       // Input: Save directly to state.
-                      onWeightChange={(val) => handleInput(station.id, parseFloat(val) || 0)}
-                      onArmChange={(val) => { const v = parseFloat(val); if(!isNaN(v)) setArmOverrides({...armOverrides, [station.id]: v}); }}
+                      onWeightChange={handleWeightChange}
+                      onArmChange={handleArmChange}
                       
                       // Toggle: Triggers conversion logic
-                      onToggleUnit={() => handleToggleUnit(station.id, currentWeight)}
+                      onToggleUnit={handleToggleUnit}
                     />
                     
                     {isFuel && (
@@ -254,7 +290,7 @@ export default function CalculatorView({
                                step={stepVal}
                                value={currentWeight} 
                                onChange={(e) => {
-                                   handleInput(station.id, parseFloat(e.target.value));
+                                   handleWeightChange(station.id, e.target.value);
                                }}
                                className="w-full h-2 bg-blue-200 dark:bg-blue-900 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:accent-blue-500"
                              />
@@ -311,10 +347,10 @@ export default function CalculatorView({
               
               {customStations.map((s) => (
                 <StationRow key={s.id} id={s.id} name={s.name} weight={s.weight} arm={s.arm} isCustom={true} useGallons={false} showMoments={toggles.moments}
-                  onWeightChange={(val) => onUpdateCustom(s.id, 'weight', parseFloat(val)||0)}
-                  onArmChange={(val) => onUpdateCustom(s.id, 'arm', parseFloat(val)||0)}
-                  onNameChange={(val) => onUpdateCustom(s.id, 'name', val)}
-                  onDelete={() => onDeleteCustom(s.id)}
+                  onWeightChange={handleCustomWeightChange}
+                  onArmChange={handleCustomArmChange}
+                  onNameChange={handleCustomNameChange}
+                  onDelete={onDeleteCustom}
                 />
               ))}
             </div>
@@ -369,7 +405,7 @@ export default function CalculatorView({
                          <div className={`w-2.5 h-2.5 rounded-full ${isTakeoffSafe ? 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]' : 'bg-red-400 animate-pulse'}`}></div>
                          <span className="text-sm font-bold opacity-90">Takeoff CG</span>
                     </div>
-                    <span className="font-mono font-bold text-sm">{takeoffCG.toFixed(1)}"</span>
+                    <span className="font-mono font-bold text-sm">{takeoffCG.toFixed(1)}&quot;</span>
                 </div>
                 {takeoffIssue && <div className="text-[10px] font-bold bg-black/20 p-2 rounded text-red-200 border border-red-400/30">{takeoffIssue}</div>}
 
@@ -381,7 +417,7 @@ export default function CalculatorView({
                                 <span className="text-sm font-bold opacity-90">Landing CG</span>
                             </div>
                             {fuel.trip > 0 ? (
-                                <span className="font-mono font-bold text-sm">{landingCG.toFixed(1)}"</span>
+                                <span className="font-mono font-bold text-sm">{landingCG.toFixed(1)}&quot;</span>
                             ) : <span className="text-xs opacity-50 italic">--</span>}
                         </div>
                         {landingIssue && <div className="text-[10px] font-bold bg-black/20 p-2 rounded text-red-200 border border-red-400/30">{landingIssue}</div>}

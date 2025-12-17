@@ -13,14 +13,14 @@ interface StationRowProps {
   useGallons: boolean;
   showMoments: boolean;
   // Callbacks
-  onWeightChange: (val: string) => void;
-  onArmChange: (val: string) => void;
-  onNameChange?: (val: string) => void;
-  onToggleUnit?: () => void;
-  onDelete?: () => void;
+  onWeightChange: (id: string, val: string) => void;
+  onArmChange: (id: string, val: string) => void;
+  onNameChange?: (id: string, val: string) => void;
+  onToggleUnit?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export default function StationRow({
+function StationRow({
   id,
   name,
   weight,
@@ -51,7 +51,7 @@ export default function StationRow({
       {/* Delete Button (Custom Only) */}
       {isCustom && onDelete && (
         <button 
-          onClick={onDelete}
+          onClick={() => onDelete(id)}
           className="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
           aria-label="Remove item"
         >
@@ -67,7 +67,7 @@ export default function StationRow({
              type="text" 
              placeholder="Item Name"
              value={name}
-             onChange={(e) => onNameChange(e.target.value)}
+             onChange={(e) => onNameChange(id, e.target.value)}
              className="text-sm font-medium text-gray-700 dark:text-gray-200 bg-transparent border-b border-transparent hover:border-orange-200 focus:border-orange-500 focus:outline-none w-full mb-1 transition-colors"
            />
           ) : (
@@ -77,7 +77,7 @@ export default function StationRow({
           {/* Unit Toggle (Fuel Only) */}
           {isFuel && onToggleUnit && (
             <button
-              onClick={onToggleUnit}
+              onClick={() => onToggleUnit(id)}
               className="text-[10px] font-bold px-2 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/50 transition"
             >
               {useGallons ? "Switch to LBS" : "Switch to GALS"}
@@ -92,7 +92,7 @@ export default function StationRow({
             <input 
               type="number" 
               value={arm}
-              onChange={(e) => onArmChange(e.target.value)}
+              onChange={(e) => onArmChange(id, e.target.value)}
               className={`w-10 bg-transparent border-b border-gray-300 dark:border-gray-600 text-center text-gray-600 dark:text-gray-400 focus:outline-none focus:bg-white dark:focus:bg-gray-800 transition-colors ${isCustom ? 'focus:border-orange-500' : 'focus:border-blue-500'}`}
             />
           </div>
@@ -117,7 +117,7 @@ export default function StationRow({
             text-gray-900 dark:text-white
             ${isCustom ? 'focus:ring-orange-500' : 'focus:ring-blue-500'}`}
           value={weight || ""}
-          onChange={(e) => onWeightChange(e.target.value)}
+          onChange={(e) => onWeightChange(id, e.target.value)}
         />
         <span className="text-xs text-gray-400 font-medium w-6">
           {isFuel && useGallons ? "Gals" : "Lbs"}
@@ -126,3 +126,5 @@ export default function StationRow({
     </div>
   );
 }
+
+export default React.memo(StationRow);
