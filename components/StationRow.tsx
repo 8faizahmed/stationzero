@@ -52,10 +52,13 @@ export default function StationRow({
       {isCustom && onDelete && (
         <button 
           onClick={onDelete}
-          className="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-1 right-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50"
           aria-label="Remove item"
+          title="Remove item"
         >
-          ×
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+          </svg>
         </button>
       )}
 
