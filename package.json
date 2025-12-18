@@ -7,7 +7,8 @@
     "build": "next build --webpack",
     "build:mobile": "cross-env IS_MOBILE=true next build --webpack",
     "start": "next start --webpack",
-    "lint": "eslint"
+    "lint": "eslint",
+    "resources": "capacitor-assets generate --android --ios"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
@@ -22,6 +23,7 @@
     "recharts": "^3.5.1"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
