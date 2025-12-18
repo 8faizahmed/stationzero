@@ -384,7 +384,11 @@ export default function Home() {
       </main>
 
       <footer className="py-8 text-center print:hidden border-t border-slate-200 dark:border-slate-800 mt-auto bg-slate-50 dark:bg-slate-950">
-        <a href="/legal" className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">Legal Disclaimer & Terms of Use</a>
+        <div className="flex justify-center gap-4">
+            <a href="/legal" className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">Terms of Use</a>
+            <span className="text-xs text-slate-300 dark:text-slate-700">•</span>
+            <a href="/privacy-policy" className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">Privacy Policy</a>
+        </div>
       </footer>
 
       {/* REPORT GENERATION (Hidden) */}
