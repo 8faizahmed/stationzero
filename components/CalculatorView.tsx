@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import StationRow from "./StationRow";
 import WBGraph from "./WBGraph";
 
@@ -88,26 +88,77 @@ export default function CalculatorView({
 
   // --- HANDLERS ---
 
-  // 1. Toggle Handler
-  const handleToggleUnit = (stationId: string, currentVal: number) => {
-    let newVal = currentVal;
+  // 1. Toggle Handler (Stable)
+  const handleToggleUnit = useCallback((stationId: string) => {
+    // We need to access the current value of useGallons to toggle it properly inside the callback without depending on it.
+    // However, setUseGallons(prev => ...) is the way to go.
+    // But we also need to update weights based on the PREVIOUS useGallons value.
+    // Since setUseGallons and setWeights are independent, we can't easily chain them transactionally in a way that setWeights sees the "old" useGallons if we rely only on updater functions for both.
     
-    if (useGallons) {
-       // Switching Gals -> Lbs
-       newVal = currentVal * FUEL_DENSITY;
-    } else {
-       // Switching Lbs -> Gals
-       newVal = currentVal / FUEL_DENSITY;
-    }
-    
-    setWeights({ ...weights, [stationId]: newVal });
-    setUseGallons(!useGallons);
-  };
+    // To solve this correctly without adding 'useGallons' to the dependency array (which would break stability),
+    // we can use a ref or just accept that we need to read the current state.
+    // BUT, if we add useGallons to deps, we lose the benefit of avoiding re-renders of ALL rows when ONE row changes.
+    // Actually, if useGallons changes, ALL rows re-render anyway (labels change).
+    // So 'handleToggleUnit' changing when 'useGallons' changes is ACCEPTABLE.
+    // The critical part is 'handleWeightChange' (typing) which does NOT depend on useGallons changing.
 
-  // 2. Input Handlers
-  const handleInput = (id: string, val: number) => {
-    setWeights({...weights, [id]: val});
-  };
+    // So let's revert to using 'useGallons' in the dependency array for this specific handler.
+    // This simplifies the logic and type safety.
+
+    const isSwitchingToLbs = useGallons;
+
+    setWeights((prevWeights: Record<string, number>) => {
+      const currentVal = prevWeights[stationId] || 0;
+      let newVal = currentVal;
+
+      if (isSwitchingToLbs) {
+         // Switching Gals -> Lbs
+         newVal = currentVal * FUEL_DENSITY;
+      } else {
+         // Switching Lbs -> Gals
+         newVal = currentVal / FUEL_DENSITY;
+      }
+      return { ...prevWeights, [stationId]: newVal };
+    });
+    
+    setUseGallons(!useGallons);
+  }, [useGallons, setUseGallons, setWeights, FUEL_DENSITY]);
+
+  // 2. Input Handlers (Stable)
+  const handleWeightChange = useCallback((id: string, val: string) => {
+    const numVal = parseFloat(val) || 0;
+    setWeights((prev: any) => ({...prev, [id]: numVal}));
+  }, [setWeights]);
+
+  const handleArmChange = useCallback((id: string, val: string) => {
+    const numVal = parseFloat(val);
+    if (!isNaN(numVal)) {
+      setArmOverrides((prev: any) => ({...prev, [id]: numVal}));
+    }
+  }, [setArmOverrides]);
+
+  // 3. Custom Station Handlers (Stable wrappers)
+  // Note: These still depend on `onUpdateCustom` which must be stable from the parent (Home)
+  // to avoid re-renders. We assume Home passes a stable callback or we accept that
+  // custom stations might re-render if onUpdateCustom changes.
+  // However, wrapping them in useCallback here ensures that AT LEAST CalculatorView isn't creating
+  // new function instances if onUpdateCustom hasn't changed.
+  const handleCustomWeightChange = useCallback((id: string, val: string) => {
+    onUpdateCustom(id, 'weight', parseFloat(val) || 0);
+  }, [onUpdateCustom]);
+
+  const handleCustomArmChange = useCallback((id: string, val: string) => {
+    onUpdateCustom(id, 'arm', parseFloat(val) || 0);
+  }, [onUpdateCustom]);
+
+  const handleCustomNameChange = useCallback((id: string, val: string) => {
+    onUpdateCustom(id, 'name', val);
+  }, [onUpdateCustom]);
+
+  const handleDeleteCustomItem = useCallback((id: string) => {
+    onDeleteCustom(id);
+  }, [onDeleteCustom]);
+
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
@@ -235,12 +286,12 @@ export default function CalculatorView({
                       useGallons={useGallons} 
                       showMoments={toggles.moments}
                       
-                      // Input: Save directly to state.
-                      onWeightChange={(val) => handleInput(station.id, parseFloat(val) || 0)}
-                      onArmChange={(val) => { const v = parseFloat(val); if(!isNaN(v)) setArmOverrides({...armOverrides, [station.id]: v}); }}
+                      // Input: Stable Callbacks
+                      onWeightChange={handleWeightChange}
+                      onArmChange={handleArmChange}
                       
-                      // Toggle: Triggers conversion logic
-                      onToggleUnit={() => handleToggleUnit(station.id, currentWeight)}
+                      // Toggle: Stable Callback
+                      onToggleUnit={handleToggleUnit}
                     />
                     
                     {isFuel && (
@@ -254,7 +305,7 @@ export default function CalculatorView({
                                step={stepVal}
                                value={currentWeight} 
                                onChange={(e) => {
-                                   handleInput(station.id, parseFloat(e.target.value));
+                                   handleWeightChange(station.id, e.target.value);
                                }}
                                className="w-full h-2 bg-blue-200 dark:bg-blue-900 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:accent-blue-500"
                              />
@@ -311,10 +362,10 @@ export default function CalculatorView({
               
               {customStations.map((s) => (
                 <StationRow key={s.id} id={s.id} name={s.name} weight={s.weight} arm={s.arm} isCustom={true} useGallons={false} showMoments={toggles.moments}
-                  onWeightChange={(val) => onUpdateCustom(s.id, 'weight', parseFloat(val)||0)}
-                  onArmChange={(val) => onUpdateCustom(s.id, 'arm', parseFloat(val)||0)}
-                  onNameChange={(val) => onUpdateCustom(s.id, 'name', val)}
-                  onDelete={() => onDeleteCustom(s.id)}
+                  onWeightChange={handleCustomWeightChange}
+                  onArmChange={handleCustomArmChange}
+                  onNameChange={handleCustomNameChange}
+                  onDelete={handleDeleteCustomItem}
                 />
               ))}
             </div>
