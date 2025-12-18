@@ -115,10 +115,10 @@ export default function Home() {
           alert("Fleet imported successfully!");
           setShowSettings(false);
         } catch (validationErr) {
-          alert(`Invalid file format: ${(validationErr as Error).message}`);
+          alert(`Import Failed: ${(validationErr as Error).message}`);
         }
       } catch (err) {
-        alert("Error parsing file.");
+        alert("Import Failed: The file could not be read. Please ensure it is a valid JSON file.");
       }
     };
     reader.readAsText(file);

@@ -92,12 +92,12 @@ function validateSavedAircraft(data: any): data is SavedAircraft {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function validateSavedFleet(data: any): SavedAircraft[] {
   if (!Array.isArray(data)) {
-    throw new Error("Imported data is not an array");
+    throw new Error("The file format is incorrect (expected a list of aircraft).");
   }
 
   return data.map((item, index) => {
     if (!validateSavedAircraft(item)) {
-      throw new Error(`Invalid aircraft data at index ${index}: Missing required fields or invalid types.`);
+      throw new Error(`Aircraft #${index + 1} (${item?.registration || 'Unknown Registration'}) is missing required data or has invalid values.`);
     }
     return item;
   });
