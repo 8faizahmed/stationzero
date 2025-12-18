@@ -127,6 +127,11 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
       
       <footer className="py-8 text-center text-gray-400 text-sm border-t border-gray-100 dark:border-gray-800">
         <p>&copy; {new Date().getFullYear()} Faiz Ahmed. All Rights Reserved.</p>
+        <div className="mt-2 flex justify-center gap-4">
+            <a href="/legal" className="hover:text-blue-500 transition-colors">Terms of Use</a>
+            <span className="text-gray-300 dark:text-gray-700">•</span>
+            <a href="/privacy-policy" className="hover:text-blue-500 transition-colors">Privacy Policy</a>
+        </div>
       </footer>
     </div>
   );
