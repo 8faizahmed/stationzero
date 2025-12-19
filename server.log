@@ -1,0 +1,21 @@
+
+> wbcal@0.1.0 dev
+> next dev --webpack
+
+   ▲ Next.js 16.0.10 (webpack)
+   - Local:         http://localhost:3000
+   - Network:       http://192.168.0.2:3000
+
+ ✓ Starting...
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+ ○ (pwa) PWA support is disabled.
+ ✓ Ready in 2.6s
+ ○ Compiling / ...
+ GET / 200 in 15.0s (compile: 14.3s, render: 656ms)
+ GET / 200 in 69ms (compile: 10ms, render: 59ms)
+ GET / 200 in 72ms (compile: 7ms, render: 65ms)
+ GET / 200 in 55ms (compile: 5ms, render: 51ms)
