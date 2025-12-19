@@ -10,6 +10,7 @@ import AircraftForm from "../components/AircraftForm";
 import LegalDisclaimerModal from "../components/LegalDisclaimerModal";
 import LandingPage from "../components/LandingPage"; 
 import { isPointInPolygon, getCGLimitsAtWeight } from "../utils/calculations";
+import { validateFleet } from "../utils/validation";
 
 export interface CustomStation {
   id: string;
@@ -48,7 +49,14 @@ export default function Home() {
   useEffect(() => {
     const loadedFleet = localStorage.getItem("wb_saved_fleet");
     if (loadedFleet) {
-      try { setSavedPlanes(JSON.parse(loadedFleet)); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(loadedFleet);
+        const validated = validateFleet(parsed);
+        if (validated.length !== parsed.length) {
+          console.warn("Some aircraft data was invalid and filtered out.");
+        }
+        setSavedPlanes(validated);
+      } catch (e) { console.error(e); }
     }
     const savedTheme = localStorage.getItem("wb_theme");
     if (savedTheme === "dark") {
@@ -100,13 +108,19 @@ export default function Home() {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        if (Array.isArray(json)) {
-          setSavedPlanes(json);
-          localStorage.setItem("wb_saved_fleet", JSON.stringify(json));
-          alert("Fleet imported successfully!");
+        const validFleet = validateFleet(json);
+
+        if (validFleet.length > 0) {
+          if (validFleet.length < (Array.isArray(json) ? json.length : 0)) {
+             alert(`Imported ${validFleet.length} valid aircraft. Some items were skipped due to invalid format.`);
+          } else {
+             alert("Fleet imported successfully!");
+          }
+          setSavedPlanes(validFleet);
+          localStorage.setItem("wb_saved_fleet", JSON.stringify(validFleet));
           setShowSettings(false);
         } else {
-          alert("Invalid file format.");
+          alert("Invalid file format. No valid aircraft found.");
         }
       } catch (err) {
         alert("Error parsing file.");
