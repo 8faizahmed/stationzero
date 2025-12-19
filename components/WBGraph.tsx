@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   ScatterChart,
   Scatter,
@@ -9,7 +10,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
-  Label,
 } from "recharts";
 import { EnvelopePoint } from "../data/aircraft";
 
@@ -22,21 +22,21 @@ interface WBGraphProps {
   isDark: boolean;
 }
 
-const RenderTakeoffPoint = (props: any) => {
+const RenderTakeoffPoint = (props: { cx: number; cy: number }) => {
   const { cx, cy } = props;
   return (
     <circle cx={cx} cy={cy} r={6} fill="#dc2626" stroke="white" strokeWidth={2} cursor="pointer" />
   );
 };
 
-const RenderLandingPoint = (props: any) => {
+const RenderLandingPoint = (props: { cx: number; cy: number }) => {
   const { cx, cy } = props;
   return (
     <circle cx={cx} cy={cy} r={6} fill="#16a34a" stroke="white" strokeWidth={2} cursor="pointer" />
   );
 };
 
-export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWeight, landingCG, isDark }: WBGraphProps) {
+function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWeight, landingCG, isDark }: WBGraphProps) {
   const takeoffPoint = [{ cg: takeoffCG, weight: takeoffWeight }];
   const landingPoint = landingWeight ? [{ cg: landingCG, weight: landingWeight }] : [];
 
@@ -72,13 +72,7 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
               stroke={axisColor}
               tick={{ fill: axisColor, fontSize: 12 }}
             >
-              {/* <Label 
-                value="Center of Gravity (inches)" 
-                offset={0} 
-                position="insideBottom" 
-                fill={axisColor} 
-                style={{ fontSize: '12px', fontWeight: 'bold' }}
-              /> */}
+              {/* Labels removed for cleaner mobile look */}
             </XAxis>
 
             <YAxis 
@@ -90,13 +84,6 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
               stroke={axisColor}
               tick={{ fill: axisColor, fontSize: 12 }}
             >
-               {/* <Label 
-                value="Weight (lbs)" 
-                angle={-90} 
-                position="insideLeft" 
-                fill={axisColor}
-                style={{ textAnchor: 'middle', fontSize: '12px', fontWeight: 'bold' }}
-              /> */}
             </YAxis>
             
             <Tooltip 
@@ -165,3 +152,6 @@ export default function WBGraph({ envelope, takeoffWeight, takeoffCG, landingWei
     </div>
   );
 }
+
+// Optimization: Memoize graph to avoid expensive Recharts re-renders on unrelated UI toggles (like "Moments" or "Config")
+export default memo(WBGraph);
