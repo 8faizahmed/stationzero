@@ -10,6 +10,7 @@ import AircraftForm from "../components/AircraftForm";
 import LegalDisclaimerModal from "../components/LegalDisclaimerModal";
 import LandingPage from "../components/LandingPage"; 
 import { isPointInPolygon, getCGLimitsAtWeight } from "../utils/calculations";
+import { validateImportedFleet } from "../utils/validation";
 
 export interface CustomStation {
   id: string;
@@ -48,7 +49,15 @@ export default function Home() {
   useEffect(() => {
     const loadedFleet = localStorage.getItem("wb_saved_fleet");
     if (loadedFleet) {
-      try { setSavedPlanes(JSON.parse(loadedFleet)); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(loadedFleet);
+        const validated = validateImportedFleet(parsed);
+        setSavedPlanes(validated);
+      } catch (e) {
+        console.error("Failed to load fleet from storage:", e);
+        // Optionally clear corrupted data so the app doesn't stay broken,
+        // but for now logging is safe.
+      }
     }
     const savedTheme = localStorage.getItem("wb_theme");
     if (savedTheme === "dark") {
@@ -100,16 +109,17 @@ export default function Home() {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        if (Array.isArray(json)) {
-          setSavedPlanes(json);
-          localStorage.setItem("wb_saved_fleet", JSON.stringify(json));
-          alert("Fleet imported successfully!");
-          setShowSettings(false);
-        } else {
-          alert("Invalid file format.");
-        }
+        const validated = validateImportedFleet(json);
+        setSavedPlanes(validated);
+        localStorage.setItem("wb_saved_fleet", JSON.stringify(validated));
+        alert("Fleet imported successfully!");
+        setShowSettings(false);
       } catch (err) {
-        alert("Error parsing file.");
+        if (err instanceof Error) {
+            alert("Error parsing file: " + err.message);
+        } else {
+            alert("Error parsing file.");
+        }
       }
     };
     reader.readAsText(file);
