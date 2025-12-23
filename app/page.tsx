@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { aircraftList, Aircraft, SavedAircraft } from "../data/aircraft";
+import { useState, useEffect, useMemo } from "react";
+import { aircraftList, Aircraft, SavedAircraft, EnvelopePoint, Station } from "../data/aircraft";
 import ManifestReport from "../components/ManifestReport";
 import HangarList from "../components/HangarList";
 import SettingsModal from "../components/SettingsModal";
@@ -177,95 +177,99 @@ export default function Home() {
   }, [customEmptyWeight, customEmptyArm, armOverrides, selectedPlane, savedPlanes, view]);
 
   // --- CALCULATION LOGIC ---
-  let results = {
-    rampWeight: 0, 
-    rampMoment: 0, // FIX: Initialize rampMoment
-    takeoffWeight: 0, takeoffMoment: 0, takeoffCG: 0,
-    landingWeight: 0, landingCG: 0,
-    isTakeoffSafe: true, isLandingSafe: true,
-    takeoffIssue: null as string | null, landingIssue: null as string | null,
-    isGo: true, enduranceHours: 0, enduranceMinutes: 0,
-    activeEnvelope: [] as any[], maxGross: 0,
-    fuelArm: 0
-  };
+  // ⚡ Bolt: Memoize physics calculation to prevent re-running on unrelated UI updates
+  const results = useMemo(() => {
+    let res = {
+      rampWeight: 0,
+      rampMoment: 0,
+      takeoffWeight: 0, takeoffMoment: 0, takeoffCG: 0,
+      landingWeight: 0, landingCG: 0,
+      isTakeoffSafe: true, isLandingSafe: true,
+      takeoffIssue: null as string | null, landingIssue: null as string | null,
+      isGo: true, enduranceHours: 0, enduranceMinutes: 0,
+      activeEnvelope: [] as EnvelopePoint[], maxGross: 0,
+      fuelArm: 0
+    };
 
-  if (selectedPlane) {
-    let rampWeight = customEmptyWeight;
-    let rampMoment = customEmptyWeight * customEmptyArm;
-    let fuelArm = 0;
-    let totalFuelWeight = 0;
+    if (selectedPlane) {
+      let rampWeight = customEmptyWeight;
+      let rampMoment = customEmptyWeight * customEmptyArm;
+      let fuelArm = 0;
+      let totalFuelWeight = 0;
 
-    selectedPlane.stations.forEach((station: any) => {
-      let w = weights[station.id] || 0;
-      const isFuel = station.id.toLowerCase().includes("fuel");
-      if (isFuel) {
-        if (useGallons) w = w * 6;
-        totalFuelWeight = w;
-        fuelArm = armOverrides[station.id] !== undefined ? armOverrides[station.id] : station.arm;
+      selectedPlane.stations.forEach((station: Station) => {
+        let w = weights[station.id] || 0;
+        const isFuel = station.id.toLowerCase().includes("fuel");
+        if (isFuel) {
+          if (useGallons) w = w * 6;
+          totalFuelWeight = w;
+          fuelArm = armOverrides[station.id] !== undefined ? armOverrides[station.id] : station.arm;
+        }
+        const arm = armOverrides[station.id] !== undefined ? armOverrides[station.id] : station.arm;
+        rampWeight += w;
+        rampMoment += w * arm;
+      });
+
+      customStations.forEach((s) => {
+        rampWeight += s.weight;
+        rampMoment += s.weight * s.arm;
+      });
+
+      const taxiWeight = fuel.taxi * 6;
+      const takeoffWeight = rampWeight - taxiWeight;
+      const takeoffMoment = rampMoment - (taxiWeight * fuelArm);
+      const takeoffCG = takeoffMoment / (takeoffWeight || 1);
+
+      let landingWeight = takeoffWeight;
+      let landingCG = takeoffCG;
+
+      if (fuel.trip > 0) {
+        const tripWeight = fuel.trip * 6;
+        landingWeight = takeoffWeight - tripWeight;
+        const landingMoment = takeoffMoment - (tripWeight * fuelArm);
+        landingCG = landingMoment / (landingWeight || 1);
       }
-      const arm = armOverrides[station.id] !== undefined ? armOverrides[station.id] : station.arm;
-      rampWeight += w;
-      rampMoment += w * arm;
-    });
 
-    customStations.forEach((s) => {
-      rampWeight += s.weight;
-      rampMoment += s.weight * s.arm;
-    });
+      const usableTakeoffFuelGal = (totalFuelWeight - taxiWeight) / 6;
+      let enduranceHours = 0;
+      let enduranceMinutes = 0;
+      if (fuel.burn > 0 && usableTakeoffFuelGal > 0) {
+          const totalHours = usableTakeoffFuelGal / fuel.burn;
+          enduranceHours = Math.floor(totalHours);
+          enduranceMinutes = Math.floor((totalHours - enduranceHours) * 60);
+      }
 
-    const taxiWeight = fuel.taxi * 6;
-    const takeoffWeight = rampWeight - taxiWeight;
-    const takeoffMoment = rampMoment - (taxiWeight * fuelArm);
-    const takeoffCG = takeoffMoment / (takeoffWeight || 1);
+      const activeEnvelope = (category === 'utility' && selectedPlane.utilityEnvelope) ? selectedPlane.utilityEnvelope : selectedPlane.envelope;
+      const maxGross = Math.max(...activeEnvelope.map((p: EnvelopePoint) => p.weight));
+      const isTakeoffInside = isPointInPolygon({ cg: takeoffCG, weight: takeoffWeight }, activeEnvelope);
+      const isLandingInside = isPointInPolygon({ cg: landingCG, weight: landingWeight }, activeEnvelope);
 
-    let landingWeight = takeoffWeight;
-    let landingCG = takeoffCG;
+      const takeoffLimits = getCGLimitsAtWeight(takeoffWeight, activeEnvelope);
+      const landingLimits = getCGLimitsAtWeight(landingWeight, activeEnvelope);
 
-    if (fuel.trip > 0) {
-      const tripWeight = fuel.trip * 6;
-      landingWeight = takeoffWeight - tripWeight;
-      const landingMoment = takeoffMoment - (tripWeight * fuelArm);
-      landingCG = landingMoment / (landingWeight || 1);
+      const getFailureReason = (weight: number, cg: number, limits: {minCG: number, maxCG: number} | null) => {
+        if (weight > maxGross) return `Over Max Gross (${(weight - maxGross).toFixed(0)} lbs)`;
+        if (!limits) return "Outside Envelope";
+        if (cg < limits.minCG) return `Fwd Limit Exceeded by ${(limits.minCG - cg).toFixed(1)}"`;
+        if (cg > limits.maxCG) return `Aft Limit Exceeded by ${(cg - limits.maxCG).toFixed(1)}"`;
+        return "Outside Envelope";
+      };
+
+      res = {
+        rampWeight,
+        rampMoment,
+        takeoffWeight, takeoffMoment, takeoffCG,
+        landingWeight, landingCG,
+        isTakeoffSafe: isTakeoffInside, isLandingSafe: isLandingInside,
+        takeoffIssue: !isTakeoffInside ? getFailureReason(takeoffWeight, takeoffCG, takeoffLimits) : null,
+        landingIssue: !isLandingInside ? getFailureReason(landingWeight, landingCG, landingLimits) : null,
+        isGo: isTakeoffInside && (toggles.flightPlan ? isLandingInside : true),
+        enduranceHours, enduranceMinutes,
+        activeEnvelope, maxGross, fuelArm
+      };
     }
-
-    const usableTakeoffFuelGal = (totalFuelWeight - taxiWeight) / 6;
-    let enduranceHours = 0;
-    let enduranceMinutes = 0;
-    if (fuel.burn > 0 && usableTakeoffFuelGal > 0) {
-        const totalHours = usableTakeoffFuelGal / fuel.burn;
-        enduranceHours = Math.floor(totalHours);
-        enduranceMinutes = Math.floor((totalHours - enduranceHours) * 60);
-    }
-
-    const activeEnvelope = (category === 'utility' && selectedPlane.utilityEnvelope) ? selectedPlane.utilityEnvelope : selectedPlane.envelope;
-    const maxGross = Math.max(...activeEnvelope.map((p: any) => p.weight));
-    const isTakeoffInside = isPointInPolygon({ cg: takeoffCG, weight: takeoffWeight }, activeEnvelope);
-    const isLandingInside = isPointInPolygon({ cg: landingCG, weight: landingWeight }, activeEnvelope);
-    
-    const takeoffLimits = getCGLimitsAtWeight(takeoffWeight, activeEnvelope);
-    const landingLimits = getCGLimitsAtWeight(landingWeight, activeEnvelope);
-
-    const getFailureReason = (weight: number, cg: number, limits: {minCG: number, maxCG: number} | null) => {
-      if (weight > maxGross) return `Over Max Gross (${(weight - maxGross).toFixed(0)} lbs)`;
-      if (!limits) return "Outside Envelope";
-      if (cg < limits.minCG) return `Fwd Limit Exceeded by ${(limits.minCG - cg).toFixed(1)}"`;
-      if (cg > limits.maxCG) return `Aft Limit Exceeded by ${(cg - limits.maxCG).toFixed(1)}"`;
-      return "Outside Envelope";
-    };
-
-    results = {
-      rampWeight, 
-      rampMoment, // FIX: Pass calculated moment to results
-      takeoffWeight, takeoffMoment, takeoffCG,
-      landingWeight, landingCG,
-      isTakeoffSafe: isTakeoffInside, isLandingSafe: isLandingInside,
-      takeoffIssue: !isTakeoffInside ? getFailureReason(takeoffWeight, takeoffCG, takeoffLimits) : null,
-      landingIssue: !isLandingInside ? getFailureReason(landingWeight, landingCG, landingLimits) : null,
-      isGo: isTakeoffInside && (toggles.flightPlan ? isLandingInside : true),
-      enduranceHours, enduranceMinutes,
-      activeEnvelope, maxGross, fuelArm
-    };
-  }
+    return res;
+  }, [selectedPlane, customEmptyWeight, customEmptyArm, weights, armOverrides, customStations, fuel, useGallons, category, toggles.flightPlan]);
 
   // 1. SHOW LANDING PAGE?
   if (showLanding) {
