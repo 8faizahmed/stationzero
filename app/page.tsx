@@ -10,6 +10,7 @@ import AircraftForm from "../components/AircraftForm";
 import LegalDisclaimerModal from "../components/LegalDisclaimerModal";
 import LandingPage from "../components/LandingPage"; 
 import { isPointInPolygon, getCGLimitsAtWeight } from "../utils/calculations";
+import { validateImportedFleet } from "../utils/validation";
 
 export interface CustomStation {
   id: string;
@@ -48,7 +49,14 @@ export default function Home() {
   useEffect(() => {
     const loadedFleet = localStorage.getItem("wb_saved_fleet");
     if (loadedFleet) {
-      try { setSavedPlanes(JSON.parse(loadedFleet)); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(loadedFleet);
+        if (validateImportedFleet(parsed)) {
+          setSavedPlanes(parsed);
+        } else {
+          console.error("Invalid fleet data in localStorage");
+        }
+      } catch (e) { console.error(e); }
     }
     const savedTheme = localStorage.getItem("wb_theme");
     if (savedTheme === "dark") {
@@ -100,13 +108,13 @@ export default function Home() {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        if (Array.isArray(json)) {
+        if (validateImportedFleet(json)) {
           setSavedPlanes(json);
           localStorage.setItem("wb_saved_fleet", JSON.stringify(json));
           alert("Fleet imported successfully!");
           setShowSettings(false);
         } else {
-          alert("Invalid file format.");
+          alert("Invalid file format. Please upload a valid fleet JSON file.");
         }
       } catch (err) {
         alert("Error parsing file.");
