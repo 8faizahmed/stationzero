@@ -62,8 +62,20 @@ export default function HangarList({
                       {plane.model}
                     </span>
                     <div className="flex gap-1">
-                      <button onClick={(e) => { e.stopPropagation(); onEdit(e, plane); }} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors">✏️</button>
-                      <button onClick={(e) => { e.stopPropagation(); onDelete(e, plane.id); }} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">🗑️</button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(e, plane); }}
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                        aria-label={`Edit ${plane.registration}`}
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(e, plane.id); }}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                        aria-label={`Delete ${plane.registration}`}
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
                   <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{plane.registration}</h3>
@@ -119,6 +131,7 @@ export default function HangarList({
                     onAddToFleet(template);
                   }}
                   title="Add to My Hangar"
+                  aria-label={`Add ${template.model} to My Hangar`}
                   className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all active:scale-95"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
